@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-enum
+enum E_ImageType
 {
     E_ImageType_Unknown,
     E_ImageType_Bmp,
@@ -11,33 +11,8 @@ enum
     E_ImageType_Jpg
 };
 
-struct ImageTypeUnknown
-{
-
-};
-
-struct ImageTypeBmp
-{
-};
-
-struct ImageTypeJpg
-{
-};
-
-struct ImageTypePng
-{
-};
-
-template <class T>
-struct ImageTraits
-{
-    typedef typename T::ImageType ImageCategory;
-};
-
-
 struct ImageInfo
 {
-    typedef ImageTypeUnknown ImageType;
     int width;
     int height;
     int component;
@@ -51,21 +26,7 @@ struct ImageInfo
     }
 };
 
-struct ImageInfoBmp : public ImageInfo
-{
-    typedef ImageTypeBmp ImageType;
-};
-
-struct ImageInfoJpg : public ImageInfo
-{
-    typedef ImageTypeJpg ImageType;
-};
-
-struct ImageInfoPng : public ImageInfo
-{
-    typedef ImageTypePng ImageType;
-};
-
+#pragma pack(push)
 #pragma pack(1)
 typedef struct tagBITMAPFILEHEADER
 {
@@ -90,56 +51,29 @@ typedef struct tagBITMAPINFOHEADER {
     unsigned long  biClrImportant;
 } BITMAPINFOHEADER, *PBITMAPINFOHEADER;
 
-#pragma pack()
+#pragma pack(pop)
 
 
 int GetImageType(FILE *infile);
 
-bool GetImageInfo_Impl(FILE *infile, ImageInfoBmp *pinfo, ImageTypeBmp);
-bool GetImageInfo_Impl(FILE *infile, ImageInfoJpg *pinfo, ImageTypeJpg);
-bool GetImageInfo_Impl(FILE *infile, ImageInfoPng *pinfo, ImageTypePng);
+bool GetImageInfo_Bmp_Impl(FILE *infile, ImageInfo *pinfo);
+bool GetImageInfo_Jpg_Impl(FILE *infile, ImageInfo *pinfo);
+bool GetImageInfo_Png_Impl(FILE *infile, ImageInfo *pinfo);
 
-bool GetImageRawData_Impl(FILE *infile, ImageInfo *pinfo, ImageTypeUnknown);
-bool GetImageRawData_Impl(FILE *infile, ImageInfoBmp *pinfo, ImageTypeBmp);
-bool GetImageRawData_Impl(FILE *infile, ImageInfoJpg *pinfo, ImageTypeJpg);
-bool GetImageRawData_Impl(FILE *infile, ImageInfoPng *pinfo, ImageTypePng);
+bool GetImageRawData_Bmp_Impl(FILE *infile, ImageInfo *pinfo);
+bool GetImageRawData_Jpg_Impl(FILE *infile, ImageInfo *pinfo);
+bool GetImageRawData_Png_Impl(FILE *infile, ImageInfo *pinfo);
 
-bool SaveToNewPicture_Impl(FILE *outfile, ImageInfo *pinfo, ImageTypeUnknown);
-bool SaveToNewPicture_Impl(FILE *outfile, ImageInfoBmp *pinfo, ImageTypeBmp);
-bool SaveToNewPicture_Impl(FILE *outfile, ImageInfoJpg *pinfo, ImageTypeJpg);
-bool SaveToNewPicture_Impl(FILE *outfile, ImageInfoPng *pinfo, ImageTypePng);
+bool SaveToNewPicture_Bmp_Impl(FILE *outfile, ImageInfo *pinfo);
+bool SaveToNewPicture_Jpg_Impl(FILE *outfile, ImageInfo *pinfo);
+bool SaveToNewPicture_Png_Impl(FILE *outfile, ImageInfo *pinfo);
 
+bool GetImageInfo(FILE *infile, ImageInfo *pinfo, E_ImageType type);
 
-////////////////////////////////////////////////////////////////////////////////
+bool GetImageRawData(FILE *infile, ImageInfo *pinfo, E_ImageType type);
+bool GetImageRawData(const wchar_t *filename, ImageInfo *pinfo);
+bool GetImageRawData(const char *filename, ImageInfo *pinfo);
 
-template <class T>
-bool GetImageInfo(FILE *infile, T *pinfo)
-{
-    return GetImageInfo_Impl(infile, pinfo, ImageTraits<T>::ImageCategory());
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-template <class T>
-bool GetImageRawData(FILE *infile, T *pinfo)
-{
-    if (!pinfo)
-        return false;
-
-    return GetImageRawData_Impl(infile, pinfo, ImageTraits<T>::ImageCategory());
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-template <class T>
-bool SaveToNewPicture(FILE *outfile, T *pinfo)
-{
-    if (!pinfo)
-        return false;
-
-    return SaveToNewPicture_Impl(outfile, pinfo, ImageTraits<T>::ImageCategory());
-}
+bool SaveToNewPicture(FILE *outfile, ImageInfo *pinfo, E_ImageType type);
+bool SaveToNewPicture(const wchar_t *filename, ImageInfo *pinfo, E_ImageType type);
+bool SaveToNewPicture(const char *filename, ImageInfo *pinfo, E_ImageType type);

@@ -74,7 +74,7 @@ int GetImageType(FILE *infile)
 ////////////////////////////////////////////////////////////////////////////////
 
 
-bool GetImageInfo_Impl(FILE *infile, ImageInfoBmp *pinfo, ImageTypeBmp)
+bool GetImageInfo_Bmp_Impl(FILE *infile, ImageInfo *pinfo)
 {
     if (!infile || !pinfo)
         return false;
@@ -102,7 +102,7 @@ bool GetImageInfo_Impl(FILE *infile, ImageInfoBmp *pinfo, ImageTypeBmp)
     return true;
 }
 
-bool GetImageInfo_Impl(FILE *infile, ImageInfoJpg *pinfo, ImageTypeJpg)
+bool GetImageInfo_Jpg_Impl(FILE *infile, ImageInfo *pinfo)
 {
     if (!infile || !pinfo)
         return false;
@@ -124,7 +124,7 @@ bool GetImageInfo_Impl(FILE *infile, ImageInfoJpg *pinfo, ImageTypeJpg)
     return true;
 }
 
-bool GetImageInfo_Impl(FILE *infile, ImageInfoPng *pinfo, ImageTypePng)
+bool GetImageInfo_Png_Impl(FILE *infile, ImageInfo *pinfo)
 {
     if (!infile || !pinfo)
         return false;
@@ -182,12 +182,7 @@ bool GetImageInfo_Impl(FILE *infile, ImageInfoPng *pinfo, ImageTypePng)
 ////////////////////////////////////////////////////////////////////////////////
 
 
-bool GetImageRawData_Impl(FILE * infile, ImageInfo * pinfo, ImageTypeUnknown)
-{
-    return false;
-}
-
-bool GetImageRawData_Impl(FILE *infile, ImageInfoBmp *pinfo, ImageTypeBmp)
+bool GetImageRawData_Bmp_Impl(FILE *infile, ImageInfo *pinfo)
 {
     if (!infile || !pinfo)
         return false;
@@ -230,7 +225,7 @@ bool GetImageRawData_Impl(FILE *infile, ImageInfoBmp *pinfo, ImageTypeBmp)
     return true;
 }
 
-bool GetImageRawData_Impl(FILE *infile, ImageInfoJpg *pinfo, ImageTypeJpg)
+bool GetImageRawData_Jpg_Impl(FILE *infile, ImageInfo *pinfo)
 {
     struct jpeg_decompress_struct cinfo;
     struct Jpg_error_mgr jerr;
@@ -280,7 +275,7 @@ bool GetImageRawData_Impl(FILE *infile, ImageInfoJpg *pinfo, ImageTypeJpg)
     return true;
 }
 
-bool GetImageRawData_Impl(FILE *infile, ImageInfoPng *pinfo, ImageTypePng)
+bool GetImageRawData_Png_Impl(FILE *infile, ImageInfo *pinfo)
 {
     pinfo->width = pinfo->height = pinfo->component = 0;
     pinfo->ppixels = nullptr;
@@ -391,12 +386,7 @@ bool GetImageRawData_Impl(FILE *infile, ImageInfoPng *pinfo, ImageTypePng)
 ////////////////////////////////////////////////////////////////////////////////
 
 
-bool SaveToNewPicture_Impl(FILE * outfile, ImageInfo * pinfo, ImageTypeUnknown)
-{
-    return false;
-}
-
-bool SaveToNewPicture_Impl(FILE *outfile, ImageInfoBmp *pinfo, ImageTypeBmp)
+bool SaveToNewPicture_Bmp_Impl(FILE *outfile, ImageInfo *pinfo)
 {
     const char zero_fill[8] = { 0 };
 
@@ -454,7 +444,7 @@ bool SaveToNewPicture_Impl(FILE *outfile, ImageInfoBmp *pinfo, ImageTypeBmp)
     return true;
 }
 
-bool SaveToNewPicture_Impl(FILE *outfile, ImageInfoJpg *pinfo, ImageTypeJpg)
+bool SaveToNewPicture_Jpg_Impl(FILE *outfile, ImageInfo *pinfo)
 {
     struct jpeg_compress_struct cinfo;
     struct Jpg_error_mgr jerr;
@@ -525,7 +515,7 @@ bool SaveToNewPicture_Impl(FILE *outfile, ImageInfoJpg *pinfo, ImageTypeJpg)
     return true;
 }
 
-bool SaveToNewPicture_Impl(FILE *outfile, ImageInfoPng *pinfo, ImageTypePng)
+bool SaveToNewPicture_Png_Impl(FILE *outfile, ImageInfo *pinfo)
 {
     png_structp png_ptr;     //libpng的结构体
     png_infop   info_ptr;    //libpng的信息
@@ -593,4 +583,129 @@ bool SaveToNewPicture_Impl(FILE *outfile, ImageInfoPng *pinfo, ImageTypePng)
 Error:
     assert(0);
     return false;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+
+bool GetImageInfo(FILE *infile, ImageInfo *pinfo, E_ImageType type)
+{
+    switch (type)
+    {
+    case E_ImageType_Bmp:
+        return GetImageInfo_Bmp_Impl(infile, pinfo);
+
+    case E_ImageType_Jpg:
+        return GetImageInfo_Jpg_Impl(infile, pinfo);
+
+    case E_ImageType_Png:
+        return GetImageInfo_Png_Impl(infile, pinfo);
+
+    default:
+        return false;
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+
+bool GetImageRawData(FILE *infile, ImageInfo *pinfo, E_ImageType type)
+{
+    switch (type)
+    {
+    case E_ImageType_Bmp:
+        return GetImageRawData_Bmp_Impl(infile, pinfo);
+
+    case E_ImageType_Jpg:
+        return GetImageRawData_Jpg_Impl(infile, pinfo);
+
+    case E_ImageType_Png:
+        return GetImageRawData_Png_Impl(infile, pinfo);
+
+    default:
+        return false;
+    }
+}
+
+
+bool GetImageRawData(const wchar_t *filename, ImageInfo *pinfo)
+{
+    errno_t err;
+    FILE *infile;
+    err = _wfopen_s(&infile, filename, L"rb");
+    if (err)
+        return false;
+
+    bool ret = GetImageRawData(infile, pinfo, (E_ImageType)GetImageType(infile));
+
+    fclose(infile);
+    return ret;
+}
+
+
+bool GetImageRawData(const char *filename, ImageInfo *pinfo)
+{
+    errno_t err;
+    FILE *infile;
+    err = fopen_s(&infile, filename, "rb");
+    if (err)
+        return false;
+
+    bool ret = GetImageRawData(infile, pinfo, (E_ImageType)GetImageType(infile));
+
+    fclose(infile);
+    return ret;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+
+bool SaveToNewPicture(FILE *outfile, ImageInfo *pinfo, E_ImageType type)
+{
+    switch (type)
+    {
+    case E_ImageType_Bmp:
+        return SaveToNewPicture_Bmp_Impl(outfile, pinfo);
+
+    case E_ImageType_Jpg:
+        return SaveToNewPicture_Jpg_Impl(outfile, pinfo);
+
+    case E_ImageType_Png:
+        return SaveToNewPicture_Png_Impl(outfile, pinfo);
+
+    default:
+        return false;
+    }
+}
+
+
+bool SaveToNewPicture(const wchar_t *filename, ImageInfo *pinfo, E_ImageType type)
+{
+    errno_t err;
+    FILE *outfile;
+    err = _wfopen_s(&outfile, filename, L"wb");
+    if (err)
+        return false;
+
+    bool ret = SaveToNewPicture(outfile, pinfo, type);
+
+    fclose(outfile);
+    return ret;
+}
+
+bool SaveToNewPicture(const char *filename, ImageInfo *pinfo, E_ImageType type)
+{
+    errno_t err;
+    FILE *outfile;
+    err = fopen_s(&outfile, filename, "wb");
+    if (err)
+        return false;
+
+    bool ret = SaveToNewPicture(outfile, pinfo, type);
+
+    fclose(outfile);
+    return ret;
 }

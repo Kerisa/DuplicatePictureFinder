@@ -1,16 +1,13 @@
 
 #include <string.h>
 #include "picture.h"
-#include "zlib-1.2.8/zlib.h"
 #include "lpng1625/png.h"
 #include "jpeg-9b/jpeglib.h"
 
 #ifdef _DEBUG
-#pragma comment(lib, "lpng1625/projects/vstudio2015/Debug/zlib.lib")
 #pragma comment(lib, "lpng1625/projects/vstudio2015/Debug/libpng16.lib")
 #pragma comment(lib, "jpeg-9b/libjpeg.lib")
 #elif
-#pragma comment(lib, "lpng1625/projects/vstudio/Debug/zlib.lib")
 #pragma comment(lib, "lpng1625/projects/vstudio/Debug/libpng16.lib")
 #pragma comment(lib, "jpeg-9b/libjpeg.lib")
 #endif
@@ -229,6 +226,7 @@ bool GetImageRawData_Jpg_Impl(FILE *infile, ImageInfo *pinfo)
 {
     struct jpeg_decompress_struct cinfo;
     struct Jpg_error_mgr jerr;
+    JSAMPARRAY row_arr = nullptr;
 
     if (!infile || !pinfo)
         return false;
@@ -243,6 +241,10 @@ bool GetImageRawData_Jpg_Impl(FILE *infile, ImageInfo *pinfo)
     {
         fprintf(stderr, "jpg打开失败\r\n");
         jpeg_destroy_decompress(&cinfo);
+        if (row_arr)
+            delete[] row_arr;
+        if (pinfo->ppixels)
+            delete[] pinfo->ppixels, pinfo->ppixels = nullptr;
         assert(0);
         return false;
     }
@@ -263,7 +265,7 @@ bool GetImageRawData_Jpg_Impl(FILE *infile, ImageInfo *pinfo)
     jpeg_start_decompress(&cinfo);
 
     // 按bmp/png把行像素倒置
-    JSAMPARRAY row_arr = new JSAMPROW[pinfo->height];
+    row_arr = new JSAMPROW[pinfo->height];
     for (int i = 0; i < pinfo->height; ++i)
         row_arr[i] = (JSAMPROW)(pinfo->ppixels + (pinfo->height - i - 1) * row_stride);
     while (cinfo.output_scanline < cinfo.output_height)
@@ -280,6 +282,8 @@ bool GetImageRawData_Png_Impl(FILE *infile, ImageInfo *pinfo)
     pinfo->width = pinfo->height = pinfo->component = 0;
     pinfo->ppixels = nullptr;
 
+    unsigned char* pPixels = nullptr;
+    unsigned char** lines = nullptr;
 
     png_structp png_ptr;     //libpng的结构体
     png_infop   info_ptr;    //libpng的信息
@@ -302,6 +306,10 @@ bool GetImageRawData_Png_Impl(FILE *infile, ImageInfo *pinfo)
     if (iRetVal)
     {
         fprintf(stderr, "错误码：%d\n", iRetVal);
+        if (pPixels)
+            delete[] pPixels, pinfo->ppixels = nullptr;
+        if (lines)
+            delete[] lines;
         assert(0);
         return false;
     }
@@ -349,8 +357,8 @@ bool GetImageRawData_Png_Impl(FILE *infile, ImageInfo *pinfo)
     //
     // 分配像素缓冲区
     //
-    unsigned char* pPixels = new unsigned char[width * height * pixel_byte];
-    unsigned char** lines = new unsigned char*[height * sizeof(unsigned char*)]; //列指针
+    pPixels = new unsigned char[width * height * pixel_byte];
+    lines = new unsigned char*[height * sizeof(unsigned char*)]; //列指针
 
     png_int_32 h = height - 1;
     png_int_32 i = 0;
@@ -434,8 +442,11 @@ bool SaveToNewPicture_Bmp_Impl(FILE *outfile, ImageInfo *pinfo)
             }
 
         else
+        {
             assert(0);
-
+            delete[] buffer;
+            return false;
+        }
         fwrite(buffer, 1, row_stride, outfile);
         fwrite(zero_fill, 1, aligned_width - row_stride, outfile);
     }
@@ -448,6 +459,7 @@ bool SaveToNewPicture_Jpg_Impl(FILE *outfile, ImageInfo *pinfo)
 {
     struct jpeg_compress_struct cinfo;
     struct Jpg_error_mgr jerr;
+    unsigned char *translate = nullptr;
     
     cinfo.err = jpeg_std_error(&jerr.pub);
     jerr.pub.error_exit = JpgErrorExitRoutine;
@@ -458,6 +470,8 @@ bool SaveToNewPicture_Jpg_Impl(FILE *outfile, ImageInfo *pinfo)
     {
         fprintf(stderr, "jpg存储失败\r\n");
         jpeg_destroy_compress(&cinfo);
+        if (translate)
+            delete[] translate;
         assert(0);
         return false;
     }
@@ -471,7 +485,6 @@ bool SaveToNewPicture_Jpg_Impl(FILE *outfile, ImageInfo *pinfo)
     cinfo.image_height = pinfo->height;
     cinfo.in_color_space = JCS_RGB;
     unsigned char *src = pinfo->ppixels;
-    unsigned char *translate = nullptr;
 
     if (pinfo->component == 4)
     {
@@ -520,6 +533,8 @@ bool SaveToNewPicture_Png_Impl(FILE *outfile, ImageInfo *pinfo)
     png_structp png_ptr;     //libpng的结构体
     png_infop   info_ptr;    //libpng的信息
 
+    unsigned char** lines = nullptr;
+
     png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png_ptr)
         goto Error;
@@ -561,7 +576,7 @@ bool SaveToNewPicture_Png_Impl(FILE *outfile, ImageInfo *pinfo)
     //写入文件头
     png_write_info(png_ptr, info_ptr);
 
-    unsigned char** lines = new unsigned char*[pinfo->height * sizeof(unsigned char*)]; //列指针
+    lines = new unsigned char*[pinfo->height * sizeof(unsigned char*)]; //列指针
 
     png_int_32 i = 0, h = pinfo->height - 1;
     while (h >= 0)//逆行序读取，因为位图是底到上型
@@ -581,6 +596,8 @@ bool SaveToNewPicture_Png_Impl(FILE *outfile, ImageInfo *pinfo)
     return true;
 
 Error:
+    if (lines)
+        delete[] lines;
     assert(0);
     return false;
 }

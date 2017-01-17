@@ -16,6 +16,9 @@ struct ImageInfo
     int width;
     int height;
     int component;
+
+    // 像素点的颜色分量顺序按RGB(A)排列
+    // 高度与bmp一样是倒向的
     unsigned char *ppixels;
 
     ImageInfo() : ppixels(nullptr) { }

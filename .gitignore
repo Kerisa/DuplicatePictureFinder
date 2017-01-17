@@ -1,8 +1,10 @@
 Debug
-/DuplicatePictureFinder/Debug/*.pdb
-/DuplicatePictureFinder/Debug/*.obj
-/DuplicatePictureFinder/Debug/*.idb
+Release
+*.pdb
+*.obj
+*.idb
 /*.db
 /*.opendb
-/.vs/DuplicatePictureFinder/v14/*.suo
+*.suo
 *.vcxproj.user
+*.log

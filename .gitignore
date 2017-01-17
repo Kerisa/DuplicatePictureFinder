@@ -5,3 +5,4 @@ Debug
 /*.db
 /*.opendb
 /.vs/DuplicatePictureFinder/v14/*.suo
+*.vcxproj.user

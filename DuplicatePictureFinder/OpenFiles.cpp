@@ -5,8 +5,8 @@
 
 
 void ExpandDirectory(
-    _In_ const std::string &indir,
-    _Out_ std::vector<std::string> &resultList,
+    _In_ const std::wstring &indir,
+    _Out_ std::vector<std::wstring> &resultList,
     _Out_ int *pfileNum
 )
 {
@@ -14,16 +14,16 @@ void ExpandDirectory(
     WIN32_FIND_DATA FindData;
     int				cnt = 0;
 
-    std::string slash(indir), wildcard(indir), find;
+    std::wstring slash(indir), wildcard(indir), find;
     if (indir.back() != '\\')
     {
-        slash += "\\";
-        wildcard += "\\*.*";
+        slash += L"\\";
+        wildcard += L"\\*.*";
     }
     else
-        wildcard += "*.*";
+        wildcard += L"*.*";
 
-    if (INVALID_HANDLE_VALUE != (hFindFile = FindFirstFileA(wildcard.c_str(), &FindData)))
+    if (INVALID_HANDLE_VALUE != (hFindFile = FindFirstFile(wildcard.c_str(), &FindData)))
     {
         do
         {
@@ -31,8 +31,8 @@ void ExpandDirectory(
             find += FindData.cFileName;
             if (FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
-                if (strcmp(FindData.cFileName, ".") &&
-                    strcmp(FindData.cFileName, ".."))
+                if (wcscmp(FindData.cFileName, L".") &&
+                    wcscmp(FindData.cFileName, L".."))
                     ExpandDirectory(find, resultList, pfileNum);
             }
             else
@@ -45,30 +45,30 @@ void ExpandDirectory(
     }
 }
 
-void GetSubFileList(std::vector<std::string> &inputPath, std::vector<std::string>& resultList)
+void GetSubFileList(std::vector<std::wstring> &inputPath, std::vector<std::wstring>& resultList)
 {
     resultList.clear();
     for (int i = 0; i < inputPath.size(); ++i)
     {
-        DWORD attr = GetFileAttributesA(inputPath[i].c_str());
+        DWORD attr = GetFileAttributes(inputPath[i].c_str());
         int fileNum = 0;
         if (attr == INVALID_FILE_ATTRIBUTES)
             continue;
         else if (attr == FILE_ATTRIBUTE_DIRECTORY)
             ExpandDirectory(inputPath[i], resultList, &fileNum);
         else
-            resultList.push_back(std::string(inputPath[i]));
+            resultList.push_back(std::wstring(inputPath[i]));
     }
 }
 
-void OnDropFiles(HDROP hDrop, std::vector<std::string> & inputPath)
+void OnDropFiles(HDROP hDrop, std::vector<std::wstring> & inputPath)
 {
 	TCHAR szBuffer[MAX_PATH];
 	int iNum = DragQueryFile(hDrop, 0xffffffff, NULL, 0);
     for (int i = 0; i < iNum; ++i)
     {
         DragQueryFile(hDrop, i, szBuffer, _countof(szBuffer));
-        inputPath.push_back(std::string(szBuffer));
+        inputPath.push_back(std::wstring(szBuffer));
     }
     DragFinish(hDrop);    
 	return;

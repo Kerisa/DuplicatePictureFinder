@@ -6,15 +6,16 @@
 #include "picture.h"
 #include "featurevector.h"
 #include "OpenFiles.h"
+#include <Windows.h>
+#include "window.h"
 
-
-int main(int argc, char **argv)
+int main3(int argc, wchar_t **argv)
 {
-    std::vector<std::string> path, out;
+    std::vector<std::wstring> path, out;
     if (argc >= 2)
     {
         for (int i = 1; i < argc; ++i)
-            path.push_back(std::string(argv[i]));
+            path.push_back(std::wstring(argv[i]));
         GetSubFileList(path, out);
 
         FeatureVector fv;
@@ -34,8 +35,8 @@ int main(int argc, char **argv)
         fv.DivideGroup(nullptr);
     }
     else
-        fprintf(stderr, "Usage:\r\n");
-        
+    fprintf(stderr, "Usage:\r\n");
+
     system("pause");
     return 0;
 }

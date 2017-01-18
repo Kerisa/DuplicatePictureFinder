@@ -8,7 +8,7 @@ struct ImageInfo;
 
 struct FeatureData
 {
-    std::string filename;
+    std::wstring filename;
     int pixelcount;          // 向量的维数, = 0x100 / mDivideRegion
     int group;              // 计算后被归类到 FeatureVector::mGroup[group] 组
     int *histogram;
@@ -44,7 +44,7 @@ public:
     FeatureVector();
     bool Initialize(int _iterations = 1, int _DivideRegion = 16);
     void Clear();
-    bool AddPicture(const char * filename, const ImageInfo *pinfo);
+    bool AddPicture(const wchar_t * filename, const ImageInfo *pinfo);
     bool DivideGroup(fn_image_cmp_result callback);
 
 private:
@@ -53,7 +53,7 @@ private:
 
 private:
     const int mcDivideRegion = 16;      // 图像颜色划分精度
-    const float mcThreshold = 0.90f;    // 判断图像相似的阈值
+    const float mcThreshold = 0.95f;    // 判断图像相似的阈值
     int mIterations;                    // 计算迭代的次数
 
     SingleDataMap mData;

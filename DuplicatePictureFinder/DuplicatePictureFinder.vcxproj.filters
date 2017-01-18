@@ -30,6 +30,9 @@
     <ClCompile Include="OpenFiles.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="window.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="picture.h">
@@ -44,5 +47,24 @@
     <ClInclude Include="OpenFiles.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="window.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="DuplicatePictureFinder.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon1.ico">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="res\48X48.ico">
+      <Filter>资源文件</Filter>
+    </Image>
   </ItemGroup>
 </Project>

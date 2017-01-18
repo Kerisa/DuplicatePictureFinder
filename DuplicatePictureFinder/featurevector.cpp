@@ -31,7 +31,7 @@ void FeatureVector::Clear()
     std::vector<std::vector<SingleDataMap::iterator>>().swap(mGroup);
 }
 
-bool FeatureVector::AddPicture(const char * filename, const ImageInfo * pinfo)
+bool FeatureVector::AddPicture(const wchar_t * filename, const ImageInfo * pinfo)
 {
     assert(mcDivideRegion > 0);
 
@@ -40,7 +40,7 @@ bool FeatureVector::AddPicture(const char * filename, const ImageInfo * pinfo)
         pinfo->ppixels == nullptr)
         return false;
 
-    unsigned int crc = CRC32_4((const unsigned char*)filename, 0, strlen(filename));
+    unsigned int crc = CRC32_4((const unsigned char*)filename, 0, wcslen(filename));
     assert(mData.find(crc) == mData.end());
     auto res = mData.insert(std::make_pair(crc, FeatureData()));
     FeatureData & data = res.first->second;
@@ -116,7 +116,7 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
 
         fprintf(debug_out, "Group: %d, element: %d\r\n", gcnt, mGroup[i].size());
         for (auto it = mGroup[i].begin(); it != mGroup[i].end(); ++it)
-            fprintf(debug_out, "    %s\r\n", (*it)->second.filename.c_str());
+            fprintf(debug_out, "    %ws\r\n", (*it)->second.filename.c_str());
         fprintf(debug_out, "\r\n");
 
         ++gcnt;
@@ -137,7 +137,7 @@ float FeatureVector::Calc(const FeatureData &src, const FeatureData &dst)
         sum += sqrt(((float)src.histogram[i] / times) * ((float)dst.histogram[i] / times));
     
 #ifdef _DEBUG
-    fprintf(stderr, "%s(%d) - %s(%d) : %.5f",
+    fprintf(stderr, "%ws(%d) - %ws(%d) : %.5f",
         src.filename.c_str(), src.group,
         dst.filename.c_str(), dst.group, sum);
 #endif

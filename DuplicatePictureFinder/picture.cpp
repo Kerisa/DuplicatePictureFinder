@@ -79,10 +79,10 @@ bool GetImageInfo_Bmp_Impl(FILE *infile, ImageInfo *pinfo)
 
     rewind(infile);
 
-    BITMAPFILEHEADER bfh;
-    fread_s(&bfh, sizeof(BITMAPFILEHEADER), sizeof(BITMAPFILEHEADER), 1, infile);
-    BITMAPINFOHEADER bih;
-    fread_s(&bih, sizeof(BITMAPINFOHEADER), sizeof(BITMAPINFOHEADER), 1, infile);
+    _BITMAPFILEHEADER bfh;
+    fread_s(&bfh, sizeof(_BITMAPFILEHEADER), sizeof(_BITMAPFILEHEADER), 1, infile);
+    _BITMAPINFOHEADER bih;
+    fread_s(&bih, sizeof(_BITMAPINFOHEADER), sizeof(_BITMAPINFOHEADER), 1, infile);
 
     if (bfh.bfType != 'BM')
         return false;
@@ -187,10 +187,10 @@ bool GetImageRawData_Bmp_Impl(FILE *infile, ImageInfo *pinfo)
 
     rewind(infile);
 
-    BITMAPFILEHEADER bfh;
-    fread_s(&bfh, sizeof(BITMAPFILEHEADER), sizeof(BITMAPFILEHEADER), 1, infile);
-    BITMAPINFOHEADER bih;
-    fread_s(&bih, sizeof(BITMAPINFOHEADER), sizeof(BITMAPINFOHEADER), 1, infile);
+    _BITMAPFILEHEADER bfh;
+    fread_s(&bfh, sizeof(_BITMAPFILEHEADER), sizeof(_BITMAPFILEHEADER), 1, infile);
+    _BITMAPINFOHEADER bih;
+    fread_s(&bih, sizeof(_BITMAPINFOHEADER), sizeof(_BITMAPINFOHEADER), 1, infile);
 
     if (bfh.bfType != 'MB')     // 小端序
         return false;
@@ -203,11 +203,23 @@ bool GetImageRawData_Bmp_Impl(FILE *infile, ImageInfo *pinfo)
     pinfo->height = bih.biHeight;
     pinfo->width = bih.biWidth;
     pinfo->component = bih.biBitCount >> 3;
-    int bytesize = bfh.bfSize - bfh.bfOffBits;
-    assert(bytesize == bih.biWidth * bih.biHeight * (bih.biBitCount >> 3));
+    int row_stride = bih.biWidth * (bih.biBitCount >> 3);
+    int row_expand = (row_stride + 3) & ~3;             // bmp的行4字节对齐
+
+    fseek(infile, 0, SEEK_END);    
+    int bytesize = ftell(infile) - bfh.bfOffBits;       // bfh.bfSize 字段靠不住
+    assert(bytesize >= bih.biHeight * row_stride);
     pinfo->ppixels = new unsigned char[bytesize];
+
     fseek(infile, bfh.bfOffBits, SEEK_SET);
-    fread_s(pinfo->ppixels, bytesize, 1, bytesize, infile);
+    for (int i=0; i<bih.biHeight; ++i)
+    {
+        long dummy;
+        // 读取时忽略掉每行填充的几个字节
+        fread_s(pinfo->ppixels + i * row_stride, row_stride, 1, row_stride, infile);
+        fread_s(&dummy, sizeof(long), 1, row_expand - row_stride, infile);
+
+    }
 
     // 内存中像素点的颜色分量顺序是RGB(A)，bmp文件中的顺序是BGR(A)
     unsigned char *ptr = pinfo->ppixels;
@@ -401,22 +413,22 @@ bool SaveToNewPicture_Bmp_Impl(FILE *outfile, ImageInfo *pinfo)
     int row_stride = pinfo->width * pinfo->component;
     int aligned_width = (row_stride + 3) & ~3;          // bmp 每行需要4字节对齐
 
-    BITMAPFILEHEADER bfh = { 0 };
+    _BITMAPFILEHEADER bfh = { 0 };
     bfh.bfType = 'MB';  // 小端
     bfh.bfSize = pinfo->height * aligned_width +
-        sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-    bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+        sizeof(_BITMAPFILEHEADER) + sizeof(_BITMAPINFOHEADER);
+    bfh.bfOffBits = sizeof(_BITMAPFILEHEADER) + sizeof(_BITMAPINFOHEADER);
 
-    BITMAPINFOHEADER bih = { 0 };
-    bih.biSize = sizeof(BITMAPINFOHEADER);
+    _BITMAPINFOHEADER bih = { 0 };
+    bih.biSize = sizeof(_BITMAPINFOHEADER);
     bih.biWidth = pinfo->width;
     bih.biHeight = pinfo->height;
     bih.biPlanes = 1;
     bih.biBitCount = pinfo->component << 3;
     bih.biSizeImage = bfh.bfSize - bfh.bfOffBits;
 
-    fwrite(&bfh, sizeof(BITMAPFILEHEADER), 1, outfile);
-    fwrite(&bih, sizeof(BITMAPINFOHEADER), 1, outfile);
+    fwrite(&bfh, sizeof(_BITMAPFILEHEADER), 1, outfile);
+    fwrite(&bih, sizeof(_BITMAPINFOHEADER), 1, outfile);
 
     // 内存中像素点的颜色分量顺序是RGB(A)，bmp文件中的顺序是BGR(A)
     unsigned char *buffer = new unsigned char[row_stride];

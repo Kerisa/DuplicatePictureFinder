@@ -116,11 +116,13 @@
     <ClCompile Include="crc.cpp" />
     <ClCompile Include="featurevector.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="OpenFiles.cpp" />
     <ClCompile Include="picture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="crc.h" />
     <ClInclude Include="featurevector.h" />
+    <ClInclude Include="OpenFiles.h" />
     <ClInclude Include="picture.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

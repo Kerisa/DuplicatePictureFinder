@@ -53,7 +53,7 @@ private:
 
 private:
     const int mcDivideRegion = 16;      // 图像颜色划分精度
-    const float mcThreshold = 0.95f;    // 判断图像相似的阈值
+    const float mcThreshold = 0.90f;    // 判断图像相似的阈值
     int mIterations;                    // 计算迭代的次数
 
     SingleDataMap mData;

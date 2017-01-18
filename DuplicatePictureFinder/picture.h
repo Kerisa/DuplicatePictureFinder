@@ -31,16 +31,16 @@ struct ImageInfo
 
 #pragma pack(push)
 #pragma pack(1)
-typedef struct tagBITMAPFILEHEADER
+typedef struct
 {
     unsigned short bfType;
     unsigned long  bfSize;
     unsigned short bfReserved1;
     unsigned short bfReserved2;
     unsigned long  bfOffBits;
-} BITMAPFILEHEADER;
+} _BITMAPFILEHEADER;
 
-typedef struct tagBITMAPINFOHEADER {
+typedef struct {
     unsigned long  biSize;
     long           biWidth;
     long           biHeight;
@@ -52,7 +52,7 @@ typedef struct tagBITMAPINFOHEADER {
     long           biYPelsPerMeter;
     unsigned long  biClrUsed;
     unsigned long  biClrImportant;
-} BITMAPINFOHEADER, *PBITMAPINFOHEADER;
+} _BITMAPINFOHEADER;
 
 #pragma pack(pop)
 

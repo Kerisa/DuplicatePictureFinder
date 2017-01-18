@@ -90,6 +90,11 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
             for (int j = i + 1; j < mGroup.size(); ++j)
             {
                 float distance = CalcGroup(mGroup[i], mGroup[j]);
+#ifdef _DEBUG
+                if (!mGroup[i].empty() && !mGroup[j].empty())
+                    fprintf(stderr, "Group[%d](%d) to Group[%d](%d): Distance=%0.6f\r\n",
+                        i, mGroup[i].size(), j, mGroup[j].size(), distance);
+#endif
                 if (distance > mcThreshold)
                 {
                     // 相似
@@ -148,6 +153,9 @@ float FeatureVector::CalcGroup(
     float sum = 0.0f;
     int dimension = 0x100 / mcDivideRegion;
     int times = dimension * dimension * dimension;  // 向量的维数
+
+    if (src.empty() || dst.empty())
+        return sum;
 
     for (int i = 0; i < times; ++i)
     {

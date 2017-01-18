@@ -27,6 +27,9 @@
     <ClCompile Include="crc.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="OpenFiles.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="picture.h">
@@ -36,6 +39,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="crc.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenFiles.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

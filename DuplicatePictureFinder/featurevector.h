@@ -75,6 +75,8 @@ public:
 
 private:
     inline int min(int t, int v) { return t < v ? t : v; }
+
+    // °ÍÊÏ¾àÀë
     float Calc(const FeatureData &src, const FeatureData &dst);
     float CalcGroup(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst, __helpdata *phsrc = nullptr, __helpdata *phdst = nullptr);
     float CalcGroup2(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst);

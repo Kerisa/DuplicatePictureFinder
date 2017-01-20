@@ -40,6 +40,32 @@ public:
     typedef std::map<unsigned int, FeatureData> SingleDataMap;
     typedef void(*fn_image_cmp_result)(const std::vector<std::vector<SingleDataMap::iterator>> &mGroup);
 
+private:
+    struct __helpdata
+    {
+        const float invalid_value = -1;
+        int element_count;
+        int filled_index;       // 已更新的索引号
+        float *pvalues;
+        __helpdata() : element_count(0), filled_index(0), pvalues(nullptr) { }
+        void Init(int size)
+        {
+            if (!pvalues)
+            {
+                pvalues = new float[size];
+                for (int i = 0; i < size; ++i)
+                    pvalues[i] = invalid_value;
+            }
+
+        }
+        ~__helpdata()
+        {
+            if (pvalues) delete[] pvalues;
+        }
+    private:
+        __helpdata(const __helpdata &);
+    };
+
 public:
     FeatureVector();
     bool Initialize(int _iterations = 1, int _DivideRegion = 16);
@@ -48,11 +74,13 @@ public:
     bool DivideGroup(fn_image_cmp_result callback);
 
 private:
+    inline int min(int t, int v) { return t < v ? t : v; }
     float Calc(const FeatureData &src, const FeatureData &dst);
-    float CalcGroup(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst);
+    float CalcGroup(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst, __helpdata *phsrc = nullptr, __helpdata *phdst = nullptr);
+    float CalcGroup2(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst);
 
 private:
-    const int mcDivideRegion = 16;      // 图像颜色划分精度
+    const int mcDivideRegion = 16;      // 图像颜色划分精度, 每mcDivideRegion个像素作为一个区间
     const float mcThreshold = 0.95f;    // 判断图像相似的阈值
     int mIterations;                    // 计算迭代的次数
 

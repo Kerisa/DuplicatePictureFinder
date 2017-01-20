@@ -1,5 +1,6 @@
 
 #include <assert.h>
+#include <locale.h>
 #include "featurevector.h"
 #include "picture.h"
 #include "crc.h"
@@ -40,7 +41,7 @@ bool FeatureVector::AddPicture(const wchar_t * filename, const ImageInfo * pinfo
         pinfo->ppixels == nullptr)
         return false;
 
-    unsigned int crc = CRC32_4((const unsigned char*)filename, 0, wcslen(filename));
+    unsigned int crc = CRC32_4((const unsigned char*)filename, 0, wcslen(filename) * sizeof(wchar_t));
     assert(mData.find(crc) == mData.end());
     auto res = mData.insert(std::make_pair(crc, FeatureData()));
     FeatureData & data = res.first->second;
@@ -83,13 +84,18 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
         mGroup.push_back(tmp);
     }
 
+    const int size = (0x100 / mcDivideRegion) * (0x100 / mcDivideRegion) * (0x100 / mcDivideRegion);
+    __helpdata *hd = new __helpdata[mGroup.size()];
+    for (int i = 0; i < mGroup.size(); ++i)
+        hd[i].Init(size);
+
     while (mIterations--)
     {
         for (int i = 0; i < mGroup.size(); ++i)
         {
             for (int j = i + 1; j < mGroup.size(); ++j)
             {
-                float distance = CalcGroup(mGroup[i], mGroup[j]);
+                float distance = CalcGroup(mGroup[i], mGroup[j], &hd[i], &hd[j]);
 #ifdef _DEBUG
                 if (!mGroup[i].empty() && !mGroup[j].empty())
                     fprintf(stderr, "Group[%d](%d) to Group[%d](%d): Distance=%0.6f\r\n",
@@ -105,7 +111,10 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
         }
     }
 
+    delete[] hd;
+
 #ifdef _DEBUG
+    setlocale(LC_ALL, "");
     FILE *debug_out;
     fopen_s(&debug_out, "debug_out.log", "wb");
     int gcnt = 0;
@@ -122,6 +131,7 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
         ++gcnt;
     }
     fclose(debug_out);
+    setlocale(LC_ALL, "C");
 #endif
 
     return true;
@@ -147,7 +157,9 @@ float FeatureVector::Calc(const FeatureData &src, const FeatureData &dst)
 
 float FeatureVector::CalcGroup(
     std::vector<SingleDataMap::iterator> &src,
-    std::vector<SingleDataMap::iterator> &dst
+    std::vector<SingleDataMap::iterator> &dst,
+    __helpdata *phsrc,
+    __helpdata *phdst
 )
 {
     float sum = 0.0f;
@@ -160,12 +172,62 @@ float FeatureVector::CalcGroup(
     for (int i = 0; i < times; ++i)
     {
         float s_tot = 0.0f, d_tot = 0.0f;
-        for (int j = 0; j < src.size(); ++j)
-            s_tot += (float)src[j]->second.histogram[i] / src.size() / src[j]->second.pixelcount;
-        for (int j = 0; j < dst.size(); ++j)
-            d_tot += (float)dst[j]->second.histogram[i] / dst.size() / dst[j]->second.pixelcount;
+        if (phsrc && phsrc->element_count == src.size()
+            && phsrc->pvalues[i] != phsrc->invalid_value)    // 数据有效
+            s_tot = phsrc->pvalues[i];
+        else
+        {
+            for (int j = 0; j < src.size(); ++j)
+                s_tot += (float)src[j]->second.histogram[i] / src.size() / src[j]->second.pixelcount;
+            if (phsrc)
+            {
+                // 一旦组里添加了新的文件，则缓存全部失效
+                if (phsrc->element_count != src.size())
+                {
+                    // 这种情况只可能在计算第一个块时出现
+                    assert(i == 0);
+                    // 更新缓存数据
+                    phsrc->element_count = src.size();
+                }
+                // 同时清除下一个，以便继续更新
+                if (i + 1 < times - 1)
+                    phsrc->pvalues[i + 1] = phsrc->invalid_value;
+                // 更新缓存数据
+                phsrc->pvalues[i] = s_tot;
+            }
+        }
+
+        if (phdst && phdst->element_count == dst.size()
+            && phdst->pvalues[i] != phsrc->invalid_value)
+            d_tot = phdst->pvalues[i];
+        else
+        {
+            for (int j = 0; j < dst.size(); ++j)
+                d_tot += (float)dst[j]->second.histogram[i] / dst.size() / dst[j]->second.pixelcount;
+            if (phdst)
+            {
+                if (phdst->element_count != dst.size())
+                {
+                    assert(i == 0);
+                    phdst->element_count = dst.size();
+                }
+                phdst->pvalues[i] = d_tot;
+                if (i + 1 < times - 1)
+                    phdst->pvalues[i + 1] = phdst->invalid_value;
+            }
+        }
         sum += sqrt(s_tot * d_tot);
     }
     
     return sum;
+}
+
+float FeatureVector::CalcGroup2(
+    std::vector<SingleDataMap::iterator>& src,
+    std::vector<SingleDataMap::iterator>& dst
+)
+{
+    // 只用第一个元素（图像）进行计算
+    // 更精确的分组...？
+    return 0.0f;
 }

@@ -79,7 +79,7 @@ private:
     // 巴氏距离
     float Calc(const FeatureData &src, const FeatureData &dst);
     float CalcGroup(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst, __helpdata *phsrc = nullptr, __helpdata *phdst = nullptr);
-    float CalcGroup2(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst);
+    float CalcGroup2(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst, __helpdata *phsrc = nullptr, __helpdata *phdst = nullptr);
 
 private:
     int mDivideRegion;                  // 图像颜色划分精度, 每mcDivideRegion个像素作为一个区间

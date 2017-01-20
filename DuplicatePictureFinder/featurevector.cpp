@@ -97,6 +97,7 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
             for (int j = i + 1; j < mGroup.size(); ++j)
             {
                 float distance = CalcGroup(mGroup[i], mGroup[j], &hd[i], &hd[j]);
+                //float distance = CalcGroup2(mGroup[i], mGroup[j], &hd[i], &hd[j]);
 #ifdef _DEBUG
                 if (!mGroup[i].empty() && !mGroup[j].empty())
                     fprintf(stderr, "Group[%d](%d) to Group[%d](%d): Distance=%0.6f\r\n",
@@ -163,7 +164,7 @@ float FeatureVector::CalcGroup(
 )
 {
     float sum = 0.0f;
-    int times = mDimension * mDimension * mDimension;  // 向量的维数
+    const int times = mDimension * mDimension * mDimension;  // 向量的维数
 
     if (src.empty() || dst.empty())
         return sum;
@@ -223,10 +224,49 @@ float FeatureVector::CalcGroup(
 
 float FeatureVector::CalcGroup2(
     std::vector<SingleDataMap::iterator>& src,
-    std::vector<SingleDataMap::iterator>& dst
+    std::vector<SingleDataMap::iterator>& dst,
+    __helpdata *phsrc,
+    __helpdata *phdst
 )
 {
     // 只用第一个元素（图像）进行计算
     // 更精确的分组...？
-    return 0.0f;
+    float sum = 0.0f;
+    const int times = mDimension * mDimension * mDimension;  // 向量的维数
+
+    if (src.empty() || dst.empty())
+        return sum;
+    
+    for (int i = 0; i < times; ++i)
+    {
+        float s_tot = 0.0f, d_tot = 0.0f;
+
+        // 现在不用比较组内文件数了
+        if (phsrc && phsrc->pvalues[i] != phsrc->invalid_value)
+            s_tot = phsrc->pvalues[i];
+        else
+        {
+            s_tot = (float)src[0]->second.histogram[i] / src[0]->second.pixelcount;
+            if (phsrc)
+            {
+                assert(phsrc->pvalues[i] == phsrc->invalid_value);
+                phsrc->pvalues[i] = s_tot;
+            }
+        }
+
+        if (phdst && phdst->pvalues[i] != phdst->invalid_value)
+            d_tot = phdst->pvalues[i];
+        else
+        {
+            d_tot = (float)dst[0]->second.histogram[i] / dst[0]->second.pixelcount;
+            if (phdst)
+            {
+                assert(phdst->pvalues[i] == phdst->invalid_value);
+                phdst->pvalues[i] = d_tot;
+            }
+        }
+        sum += sqrt(s_tot * d_tot);
+    }
+
+    return sum;
 }

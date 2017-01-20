@@ -16,10 +16,12 @@ FeatureVector::FeatureVector()
     }
 }
 
-bool FeatureVector::Initialize(int _iterations, int)
+bool FeatureVector::Initialize(int _iterations, int _DivideRegion)
 {
     Clear();
     mIterations = _iterations;
+    mDivideRegion = _DivideRegion;
+    mDimension = (0x100 + _DivideRegion - 1) / _DivideRegion;
     return true;
 }
 
@@ -34,7 +36,7 @@ void FeatureVector::Clear()
 
 bool FeatureVector::AddPicture(const wchar_t * filename, const ImageInfo * pinfo)
 {
-    assert(mcDivideRegion > 0);
+    assert(mDivideRegion > 0);
 
     if (!filename || !pinfo || 
         pinfo->height <= 0 || pinfo->width <= 0 || pinfo->component <= 0 ||
@@ -48,9 +50,8 @@ bool FeatureVector::AddPicture(const wchar_t * filename, const ImageInfo * pinfo
     data.filename.assign(filename);
     data.pixelcount = pinfo->width * pinfo->height;
     
-    int dimension = 0x100 / mcDivideRegion;
-    data.histogram = new int[dimension * dimension * dimension];
-    memset(data.histogram, 0, dimension * dimension * dimension * sizeof(int));
+    data.histogram = new int[mDimension * mDimension * mDimension];
+    memset(data.histogram, 0, mDimension * mDimension * mDimension * sizeof(int));
 
     if (pinfo->component == 3 || pinfo->component == 4)
         for (int i = 0; i < pinfo->width * pinfo->height * pinfo->component; i += pinfo->component)
@@ -59,9 +60,9 @@ bool FeatureVector::AddPicture(const wchar_t * filename, const ImageInfo * pinfo
             unsigned char G = pinfo->ppixels[i + 1];
             unsigned char B = pinfo->ppixels[i + 2];
 
-            ++data.histogram[R / mcDivideRegion * dimension * dimension +
-                             G / mcDivideRegion * dimension +
-                             B / mcDivideRegion];
+            ++data.histogram[R / mDivideRegion * mDimension * mDimension +
+                             G / mDivideRegion * mDimension +
+                             B / mDivideRegion];
         }
 
     else
@@ -84,7 +85,7 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
         mGroup.push_back(tmp);
     }
 
-    const int size = (0x100 / mcDivideRegion) * (0x100 / mcDivideRegion) * (0x100 / mcDivideRegion);
+    const int size = mDimension * mDimension * mDimension;
     __helpdata *hd = new __helpdata[mGroup.size()];
     for (int i = 0; i < mGroup.size(); ++i)
         hd[i].Init(size);
@@ -140,8 +141,7 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
 float FeatureVector::Calc(const FeatureData &src, const FeatureData &dst)
 {
     float sum = 0.0f;
-    int dimension = 0x100 / mcDivideRegion;
-    int times = dimension * dimension * dimension;  // 向量的维数
+    int times = mDimension * mDimension * mDimension;  // 向量的维数
 
     for (int i = 0; i < times; ++i)
         sum += sqrt(((float)src.histogram[i] / times) * ((float)dst.histogram[i] / times));
@@ -163,8 +163,7 @@ float FeatureVector::CalcGroup(
 )
 {
     float sum = 0.0f;
-    int dimension = 0x100 / mcDivideRegion;
-    int times = dimension * dimension * dimension;  // 向量的维数
+    int times = mDimension * mDimension * mDimension;  // 向量的维数
 
     if (src.empty() || dst.empty())
         return sum;

@@ -82,7 +82,9 @@ private:
     float CalcGroup2(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst);
 
 private:
-    const int mcDivideRegion = 16;      // 图像颜色划分精度, 每mcDivideRegion个像素作为一个区间
+    int mDivideRegion;                  // 图像颜色划分精度, 每mcDivideRegion个像素作为一个区间
+                                        // 值越大则判断越粗糙
+    int mDimension;                     // = 0x100 / mcDivideRegion
     const float mcThreshold = 0.95f;    // 判断图像相似的阈值
     int mIterations;                    // 计算迭代的次数
 

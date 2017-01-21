@@ -746,7 +746,7 @@ bool SaveToNewPicture(const char *filename, ImageInfo *pinfo, E_ImageType type)
 ////////////////////////////////////////////////////////////////////////////////
 
 
-bool StretchPixels(ImageInfo *in, ImageInfo *out)
+bool StretchPixels(const ImageInfo *in, ImageInfo *out)
 {
     if (!in || !out)
         return false;
@@ -763,7 +763,7 @@ bool StretchPixels(ImageInfo *in, ImageInfo *out)
         return StretchPixels_Expand(in, out);
 }
 
-bool StretchPixels_Shrink(ImageInfo * in, ImageInfo * out)
+bool StretchPixels_Shrink(const ImageInfo * in, ImageInfo * out)
 {
     // 局部均值缩小
 
@@ -838,7 +838,7 @@ bool StretchPixels_Shrink(ImageInfo * in, ImageInfo * out)
     return true;
 }
 
-bool StretchPixels_Expand(ImageInfo * in, ImageInfo * out)
+bool StretchPixels_Expand(const ImageInfo * in, ImageInfo * out)
 {
     // 双线性插值
 
@@ -888,4 +888,76 @@ bool StretchPixels_Expand(ImageInfo * in, ImageInfo * out)
 
     out->ppixels = outBuf;
     return true;
+}
+
+int OtsuThresholding(const int *histogram, int total)
+{
+    // 大津二值化法
+    // w1w2(μ1-μ2)^2
+    // w1 - 小于阈值的像素比例
+    // w2 - 大于阈值的像素比例
+    // μ1 - 小于阈值像素的平均值
+    // μ2 - 大于阈值像素的平均值
+
+    // histogram - 像素的灰阶图
+    // total     - 总像素数
+
+    int sum = 0;
+    for (int i = 1; i < 256; ++i)
+        sum += i * histogram[i];
+    int sumB = 0;
+    int wB = 0;
+    int wF = 0;
+    float mB;
+    float mF;
+    float max = 0.0f;
+    float between = 0.0f;
+    float threshold1 = 0.0f;
+    float threshold2 = 0.0f;
+    for (int i = 0; i < 256; ++i) {
+        wB += histogram[i];
+        if (wB == 0)
+            continue;
+        wF = total - wB;
+        if (wF == 0)
+            break;
+        sumB += i * histogram[i];
+        mB = sumB / wB;
+        mF = (sum - sumB) / wF;
+        between = wB * wF * (mB - mF) * (mB - mF);
+        if (between >= max)
+        {
+            threshold1 = i;
+            if (between > max)
+                threshold2 = i;
+            max = between;
+        }
+    }
+    return (int)((threshold1 + threshold2) / 2.0f);
+}
+
+bool CreateGray(const ImageInfo * in, ImageInfo * out)
+{
+    // Gray = R*0.299 + G*0.587 + B*0.114 => (R*38 + G*75 + B*15) >> 7
+
+    out->width = in->width;
+    out->height = in->height;
+    out->component = 1;
+
+    if (in->component == 4 || in->component == 3)
+    {
+        out->ppixels = new unsigned char[out->width * out->height];
+        for (int i = 0; i < in->width * in->height; ++i)
+        {
+            int offset = i * in->component;
+            int gray = in->ppixels[offset] * 38 +
+                       in->ppixels[offset + 1] * 75 +
+                       in->ppixels[offset + 2] * 15;
+            gray >>= 7;
+            out->ppixels[i] = gray;
+        }
+        return true;
+    }
+    else
+        return false;
 }

@@ -81,6 +81,10 @@ bool SaveToNewPicture(FILE *outfile, ImageInfo *pinfo, E_ImageType type);
 bool SaveToNewPicture(const wchar_t *filename, ImageInfo *pinfo, E_ImageType type);
 bool SaveToNewPicture(const char *filename, ImageInfo *pinfo, E_ImageType type);
 
-bool StretchPixels(ImageInfo *in, ImageInfo *out);
-bool StretchPixels_Shrink(ImageInfo *in, ImageInfo *out);
-bool StretchPixels_Expand(ImageInfo *in, ImageInfo *out);
+bool StretchPixels(const ImageInfo *in, ImageInfo *out);
+bool StretchPixels_Shrink(const ImageInfo *in, ImageInfo *out);
+bool StretchPixels_Expand(const ImageInfo *in, ImageInfo *out);
+
+int OtsuThresholding(const int *histogram, int total);
+
+bool CreateGray(const ImageInfo *in, ImageInfo *out);

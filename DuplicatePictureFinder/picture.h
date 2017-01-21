@@ -13,6 +13,7 @@ enum E_ImageType
 
 struct ImageInfo
 {
+public:
     int width;
     int height;
     int component;
@@ -22,11 +23,21 @@ struct ImageInfo
     unsigned char *ppixels;
 
     ImageInfo() : ppixels(nullptr) { }
+    ImageInfo(ImageInfo && i)
+    {
+        width = i.width;
+        height = i.height;
+        component = i.component;
+        ppixels = i.ppixels;
+        i.ppixels = nullptr;
+    }
     ~ImageInfo()
     {
         if (ppixels)
             delete[] ppixels;
     }
+private:
+    ImageInfo(const ImageInfo &) { }
 };
 
 #pragma pack(push)

@@ -265,26 +265,29 @@ bool GetImageRawData_Jpg_Impl(FILE *infile, ImageInfo *pinfo)
     jpeg_stdio_src(&cinfo, infile);
     jpeg_read_header(&cinfo, TRUE);
 
-    assert(JCS_RGB == cinfo.out_color_space);
-    pinfo->height = cinfo.image_height;
-    pinfo->width = cinfo.image_width;
-    pinfo->component = cinfo.num_components;
+    //assert(JCS_RGB == cinfo.out_color_space);
+    if (JCS_RGB == cinfo.out_color_space)
+    {
+        pinfo->height = cinfo.image_height;
+        pinfo->width = cinfo.image_width;
+        pinfo->component = cinfo.num_components;
+        assert(cinfo.num_components == 3);
 
+        int row_stride = cinfo.image_width * cinfo.num_components;
+        pinfo->ppixels = new unsigned char[row_stride * pinfo->height];
 
-    int row_stride = cinfo.image_width * cinfo.num_components;
-    pinfo->ppixels = new unsigned char[row_stride * pinfo->height];
+        jpeg_start_decompress(&cinfo);
 
-    jpeg_start_decompress(&cinfo);
+        // 按bmp/png把行像素倒置
+        row_arr = new JSAMPROW[pinfo->height];
+        for (int i = 0; i < pinfo->height; ++i)
+            row_arr[i] = (JSAMPROW)(pinfo->ppixels + (pinfo->height - i - 1) * row_stride);
+        while (cinfo.output_scanline < cinfo.output_height)
+            (void)jpeg_read_scanlines(&cinfo, &row_arr[cinfo.output_scanline], 1);
+        delete[] row_arr;
 
-    // 按bmp/png把行像素倒置
-    row_arr = new JSAMPROW[pinfo->height];
-    for (int i = 0; i < pinfo->height; ++i)
-        row_arr[i] = (JSAMPROW)(pinfo->ppixels + (pinfo->height - i - 1) * row_stride);
-    while (cinfo.output_scanline < cinfo.output_height)
-        (void)jpeg_read_scanlines(&cinfo, &row_arr[cinfo.output_scanline], 1);
-    delete[] row_arr;
-
-    jpeg_finish_decompress(&cinfo);
+        jpeg_finish_decompress(&cinfo);
+    }
     jpeg_destroy_decompress(&cinfo);
     return true;
 }
@@ -737,4 +740,152 @@ bool SaveToNewPicture(const char *filename, ImageInfo *pinfo, E_ImageType type)
 
     fclose(outfile);
     return ret;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+
+bool StretchPixels(ImageInfo *in, ImageInfo *out)
+{
+    if (!in || !out)
+        return false;
+    if (in->component <= 0 || in->width <= 0 || in->height <= 0 || !in->ppixels ||
+        out->height <= 0 || out->width <= 0)
+        return false;
+
+    float x_scale = (float)out->width / in->width;
+    float y_scale = (float)out->height / in->height;
+
+    if (x_scale < 1.0f && y_scale < 1.0f)
+        return StretchPixels_Shrink(in, out);
+    else
+        return StretchPixels_Expand(in, out);
+}
+
+bool StretchPixels_Shrink(ImageInfo * in, ImageInfo * out)
+{
+    // 局部均值缩小
+
+    const float k1 = (float)in->width / out->width;      //  > 1
+    const float k2 = (float)in->height / out->height;    //  > 1
+    const int block = (int)k1 * (int)k2;
+    const int new_size = out->width * out->height;
+
+    out->component = in->component;
+    unsigned char *outBuf = new unsigned char[new_size * out->component];
+
+    if (in->component == 3)
+    {
+        for (int y = 0; y < out->height; ++y)
+        {
+            for (int x = 0; x < out->width; ++x)
+            {
+                int r = 0, g = 0, b = 0;
+                for (int j = 0; j < (int)k2; ++j)
+                    for (int i = 0; i < (int)k1; ++i)
+                    {
+                        int p = ((int)(y*k2 + j)*in->width + (int)(x*k1 + i)) * 3;
+                        assert(p < in->width * in->height * 3);
+                        r += in->ppixels[p];
+                        g += in->ppixels[p + 1];
+                        b += in->ppixels[p + 2];
+                    }
+                int tar = (y * out->width + x) * 3;
+                assert(r / block < 0x100);
+                assert(g / block < 0x100);
+                assert(b / block < 0x100);
+                outBuf[tar] = r / block;
+                outBuf[tar + 1] = g / block;
+                outBuf[tar + 2] = b / block;
+            }
+        }
+    }
+    else if (in->component == 4)
+    {
+        for (int y = 0; y < out->height; ++y)
+        {
+            for (int x = 0; x < out->width; ++x)
+            {
+                int r = 0, g = 0, b = 0, a = 0;
+                for (int j = 0; j < (int)k2; ++j)
+                    for (int i = 0; i < (int)k1; ++i)
+                    {
+                        int p = ((int)(y*k2 + j)*in->width + (int)(x*k1 + i)) * 4;
+
+                        assert(p < in->width * in->height * 4);
+                        r += in->ppixels[p];
+                        g += in->ppixels[p + 1];
+                        b += in->ppixels[p + 2];
+                        a += in->ppixels[p + 3];
+                    }
+                int tar = (y * out->width + x) * 4;
+                assert(r / block < 0x100);
+                assert(g / block < 0x100);
+                assert(b / block < 0x100);
+                assert(a / block < 0x100);
+                outBuf[tar] = r / block;
+                outBuf[tar + 1] = g / block;
+                outBuf[tar + 2] = b / block;
+                outBuf[tar + 3] = a / block;
+            }
+        }
+    }
+    else
+        return false;
+    
+    out->ppixels = outBuf;
+    return true;
+}
+
+bool StretchPixels_Expand(ImageInfo * in, ImageInfo * out)
+{
+    // 双线性插值
+
+    const float k1 = (float)out->width / in->width;      //  > 1
+    const float k2 = (float)out->height / in->height;    //  > 1
+    const int new_size = out->width * out->height;
+
+    out->component = in->component;
+    unsigned char *outBuf = new unsigned char[new_size * out->component];
+
+    for (int y = 0; y < in->height; ++y)
+        for (int x = 0; x < in->width; ++x)
+        {
+            int top = y * k2;
+            int bottom = (y + 1) * k2;
+            int left = x * k1;
+            int right = (x + 1) * k1;
+
+            int block = (bottom - top) * (right - left);
+
+            unsigned char *p1 = &in->ppixels[(y * in->width + x) * in->component];
+            unsigned char *p2 = x < in->width - 1 ? p1 + in->component : p1;
+            unsigned char *p3 = &in->ppixels[((y < in->height - 1 ? y + 1 : in->height - 1) * in->width + x) * in->component];
+            unsigned char *p4 = x < in->width - 1 ? p3 + in->component : p3;
+
+            for (int j = top; j < bottom; ++j)
+                for (int i = left; i < right; ++i)
+                {
+                    int tar_p = (j * out->width + i) * out->component;
+                    float f1 = (float)(bottom - j) * (right - i) / block;       // (1-u)(1-v)
+                    float f2 = (float)(bottom - j) * (i - left) / block;        // u(1-v)
+                    float f3 = (float)(j - top) * (right - i) / block;          // (1-u)v
+                    float f4 = (float)(j - top) * (i - left) / block;           // uv
+
+                    int r = f1 * *p1 + f2 * *p2 + f3 * *p3 + f4 * *p4;
+                    int g = f1 * *(p1+1) + f2 * *(p2+1) + f3 * *(p3+1) + f4 * *(p4+1);
+                    int b = f1 * *(p1+2) + f2 * *(p2+2) + f3 * *(p3+2) + f4 * *(p4+2);
+                    assert(r < 0x100);
+                    assert(g < 0x100);
+                    assert(b < 0x100);
+                    outBuf[tar_p] = r;
+                    outBuf[tar_p+1] = g;
+                    outBuf[tar_p+2] = b;
+                }
+
+        }
+
+    out->ppixels = outBuf;
+    return true;
 }

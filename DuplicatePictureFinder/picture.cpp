@@ -5,10 +5,10 @@
 #include "jpeg-9b/jpeglib.h"
 
 #ifdef _DEBUG
-#pragma comment(lib, "lpng1625/projects/vstudio2015/Debug/libpng16.lib")
+#pragma comment(lib, "lpng1625/projects/vstudio2015/Debug/libpng16d.lib")
 #pragma comment(lib, "jpeg-9b/libjpeg.lib")
 #else
-#pragma comment(lib, "lpng1625/projects/vstudio2015/Debug/libpng16.lib")
+#pragma comment(lib, "lpng1625/projects/vstudio2015/Release/libpng16.lib")
 #pragma comment(lib, "jpeg-9b/libjpeg.lib")
 #endif
 
@@ -331,7 +331,7 @@ bool GetImageRawData_Png_Impl(FILE *infile, ImageInfo *pinfo)
 
     assert(png_ptr && info_ptr);
     assert(infile);
-    rewind(infile);         // 删了这句会有问题？？？
+    rewind(infile);
 
     //
     // 绑定libpng和文件流
@@ -568,7 +568,7 @@ bool SaveToNewPicture_Png_Impl(FILE *outfile, ImageInfo *pinfo)
 
     assert(png_ptr && info_ptr);
     assert(outfile);
-    rewind(outfile);    // 虽说可能不需要
+    rewind(outfile);
 
     png_init_io(png_ptr, outfile);
 
@@ -938,6 +938,7 @@ int OtsuThresholding(const int *histogram, int total)
 
 bool CreateGray(const ImageInfo * in, ImageInfo * out)
 {
+    // 将RGB转为灰度
     // Gray = R*0.299 + G*0.587 + B*0.114 => (R*38 + G*75 + B*15) >> 7
 
     out->width = in->width;

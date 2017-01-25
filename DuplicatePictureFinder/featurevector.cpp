@@ -99,11 +99,14 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
             {
                 float distance = CalcGroup(mGroup[i], mGroup[j], &hd[i], &hd[j]);
                 //float distance = CalcGroup2(mGroup[i], mGroup[j], &hd[i], &hd[j]);
-#ifdef _DEBUG
+
+#if 1
+//#ifdef _DEBUG
                 if (!mGroup[i].empty() && !mGroup[j].empty())
                     fprintf(stderr, "Group[%d](%d) to Group[%d](%d): Distance=%0.6f\r\n",
                         i, mGroup[i].size(), j, mGroup[j].size(), distance);
 #endif
+
                 if (distance > mcThreshold)
                 {
                     // œ‡À∆
@@ -116,14 +119,15 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
 
     delete[] hd;
 
-#ifdef _DEBUG
+#if 1
+//#ifdef _DEBUG
     setlocale(LC_ALL, "");
     FILE *debug_out;
     fopen_s(&debug_out, "debug_out.log", "wb");
     int gcnt = 0;
     for (int i = 0; i < mGroup.size(); ++i)
     {
-        if (mGroup[i].empty())
+        if (mGroup[i].size() <= 1)
             continue;
 
         fprintf(debug_out, "Group: %d, element: %d\r\n", gcnt, mGroup[i].size());

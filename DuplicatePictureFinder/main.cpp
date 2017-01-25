@@ -12,7 +12,7 @@
 
 int main3(int argc, wchar_t **argv)
 {
-    // 巴氏距离
+    // 计算巴氏距离并分组
     std::vector<std::wstring> path, out;
     if (argc >= 2)
     {
@@ -136,8 +136,8 @@ int main5(int argc, wchar_t **argv)
 
 int main6(int argc, wchar_t **argv)
 {
+    // 比较图像特征值并分组
     std::vector<std::wstring> path, out;
-    printf("EEE\r\n");
     if (argc >= 2)
     {
         for (int i = 1; i < argc; ++i)

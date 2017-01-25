@@ -4,6 +4,7 @@
 #include "featurevector.h"
 #include "picture.h"
 #include "crc.h"
+#include "svd.h"
 
 bool FeatureVector::CrcInitialized = false;
 
@@ -137,6 +138,19 @@ bool FeatureVector::DivideGroup(fn_image_cmp_result callback)
 #endif
 
     return true;
+}
+
+void FeatureVector::svd()
+{
+    const int row_count = mDimension * mDimension * mDimension;
+    int *mat = new int[mData.size() * row_count];
+    int row = 0;
+    for (auto it = mData.begin(); it != mData.end(); ++it, ++row)
+    {
+        memcpy(mat + row * row_count, it->second.histogram, row_count * sizeof(int));
+    }
+    
+    SVD(mat, mData.size(), row_count);
 }
 
 float FeatureVector::Calc(const FeatureData &src, const FeatureData &dst)

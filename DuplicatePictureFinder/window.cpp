@@ -151,8 +151,5 @@ int main6(int argc, wchar_t **argv);
 int wmain(int argc, wchar_t **argv)
 {
     //return main2(GetModuleHandle(NULL), NULL, NULL, SW_SHOWNORMAL);
-    //return main3(argc, argv);
-    //return main4(argc, argv);
-    //return main5(argc, argv);
-    return main6(argc, argv);
+    return main3(argc, argv);
 }

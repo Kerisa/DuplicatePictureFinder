@@ -72,6 +72,9 @@ public:
     void Clear();
     bool AddPicture(const wchar_t * filename, const ImageInfo *pinfo);
     bool DivideGroup(fn_image_cmp_result callback);
+    
+    // ÊÔÒ»ÏÂsvd
+    void svd();
 
 private:
     inline int min(int t, int v) { return t < v ? t : v; }

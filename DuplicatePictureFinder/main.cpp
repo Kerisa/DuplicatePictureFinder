@@ -3,6 +3,7 @@
 #include <vector>
 #include <stdio.h>
 #include <string>
+#include <time.h>
 #include "picture.h"
 #include "featurevector.h"
 #include "OpenFiles.h"
@@ -11,6 +12,7 @@
 
 int main3(int argc, wchar_t **argv)
 {
+    // 巴氏距离
     std::vector<std::wstring> path, out;
     if (argc >= 2)
     {
@@ -32,6 +34,9 @@ int main3(int argc, wchar_t **argv)
             fv.AddPicture(out[i].c_str(), &info);
         }
 
+        // svd
+        //fv.svd();
+
         fv.DivideGroup(nullptr);
     }
     else
@@ -43,6 +48,7 @@ int main3(int argc, wchar_t **argv)
 
 int main4(int argc, wchar_t **argv)
 {
+    // 测试缩放图像
     std::vector<std::wstring> path, out;
     if (argc >= 2)
     {
@@ -79,6 +85,7 @@ int main4(int argc, wchar_t **argv)
 
 int main5(int argc, wchar_t **argv)
 {
+    // 输出二值化结果为图片
     std::vector<std::wstring> path, out;
     if (argc >= 2)
     {
@@ -130,6 +137,7 @@ int main5(int argc, wchar_t **argv)
 int main6(int argc, wchar_t **argv)
 {
     std::vector<std::wstring> path, out;
+    printf("EEE\r\n");
     if (argc >= 2)
     {
         for (int i = 1; i < argc; ++i)
@@ -168,10 +176,12 @@ int main6(int argc, wchar_t **argv)
             grayGroup.push_back(std::move(tmp));
         }
 
+        long first = clock();
         for (int i = 0; i < grayGroup.size() - 1; ++i)
         {
             if (grayGroup[i].empty())
                 continue;
+            long start = clock();
             for (int j = i + 1; j < grayGroup.size(); ++j)
             {
                 if (grayGroup[j].empty())
@@ -186,10 +196,14 @@ int main6(int argc, wchar_t **argv)
                     grayGroup[i].push_back(std::move(grayGroup[j][0]));
                     grayGroup[j].clear();
                 }
+
+                //fprintf(stderr, "%d <=> %d\r\n", i, j);
             }
+            fprintf(stderr, "%d time:%d\r\n", i, clock()-start);
         }
 
         setlocale(LC_ALL, "");
+        fprintf(stderr, "total time:%d\r\n", clock() - first);
         for (int i = 0, cnt = 0; i < grayGroup.size(); ++i)
             if (!grayGroup[i].empty())
             {

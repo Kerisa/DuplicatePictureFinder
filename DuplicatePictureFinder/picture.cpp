@@ -7,8 +7,8 @@
 #ifdef _DEBUG
 #pragma comment(lib, "lpng1625/projects/vstudio2015/Debug/libpng16.lib")
 #pragma comment(lib, "jpeg-9b/libjpeg.lib")
-#elif
-#pragma comment(lib, "lpng1625/projects/vstudio/Debug/libpng16.lib")
+#else
+#pragma comment(lib, "lpng1625/projects/vstudio2015/Debug/libpng16.lib")
 #pragma comment(lib, "jpeg-9b/libjpeg.lib")
 #endif
 
@@ -289,7 +289,7 @@ bool GetImageRawData_Jpg_Impl(FILE *infile, ImageInfo *pinfo)
         jpeg_finish_decompress(&cinfo);
     }
     jpeg_destroy_decompress(&cinfo);
-    return true;
+    return JCS_RGB == cinfo.out_color_space;
 }
 
 bool GetImageRawData_Png_Impl(FILE *infile, ImageInfo *pinfo)

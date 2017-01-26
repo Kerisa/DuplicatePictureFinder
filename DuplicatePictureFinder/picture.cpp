@@ -5,7 +5,7 @@
 #include "jpeg-9b/jpeglib.h"
 
 #ifdef _DEBUG
-#pragma comment(lib, "lpng1625/projects/vstudio2015/Debug/libpng16d.lib")
+#pragma comment(lib, "lpng1625/projects/vstudio2015/Release/libpng16.lib")
 #pragma comment(lib, "jpeg-9b/libjpeg.lib")
 #else
 #pragma comment(lib, "lpng1625/projects/vstudio2015/Release/libpng16.lib")
@@ -331,7 +331,8 @@ bool GetImageRawData_Png_Impl(FILE *infile, ImageInfo *pinfo)
 
     assert(png_ptr && info_ptr);
     assert(infile);
-    rewind(infile);
+    //rewind(infile);
+    fseek(infile, 0, SEEK_SET);
 
     //
     // 绑定libpng和文件流

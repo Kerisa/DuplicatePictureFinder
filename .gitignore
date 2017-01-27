@@ -8,3 +8,5 @@ Release
 *.suo
 *.vcxproj.user
 *.log
+*.aps
+*.tmp

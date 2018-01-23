@@ -2,6 +2,8 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <functional>
+#include <vector>
 
 enum E_ImageType
 {
@@ -99,3 +101,78 @@ bool StretchPixels_Expand(const ImageInfo *in, ImageInfo *out);
 int OtsuThresholding(const int *histogram, int total);
 
 bool CreateGray(const ImageInfo *in, ImageInfo *out);
+
+#ifdef _UNICODE
+typedef std::wstring string_t;
+#else
+typedef std::string string_t;
+#endif
+
+namespace Alisa
+{
+    class ImageInfo
+    {
+    public:
+        ImageInfo() = default;
+        ImageInfo(const ImageInfo & info) : Width(info.Width), Height(info.Height), Component(info.Component) { }
+        void Reset() { Width = Height = Component = FrameCount = 0; }
+
+        int Width{ 0 };
+        int Height{ 0 };
+        int Component{ 0 };
+        int FrameCount{ 0 };
+    };
+
+    class Pixel
+    {
+    public:
+        uint8_t R{ 0 };
+        uint8_t G{ 0 };
+        uint8_t B{ 0 };
+        uint8_t A{ 0xff };
+    };
+
+    enum E_ImageType
+    {
+        E_ImageType_Unknown,
+        E_ImageType_Bmp,
+        E_ImageType_Png,
+        E_ImageType_Jpg
+    };
+
+    constexpr int PixelType_RGB = 3;
+    constexpr int PixelType_RGBA = 4;
+
+    class ImageImpl;
+    class Image
+    {
+    public:
+        Image();
+        Image(const Image & image);
+        Image(Image && image);
+        virtual ~Image();
+
+        bool Open(const string_t & filename);
+        bool SaveTo(const string_t & filename, E_ImageType type);
+
+        bool RemoveAlpha();
+        bool AddAlpha();
+        
+        ImageInfo GetImageInfo() const;
+        void Clear();
+
+        void ModifyPixels(std::function<void(Pixel)> func);
+
+        //Image GetRawPixelData() const;
+        //bool UpdateRawPixelData(const Image & image);
+
+        bool StretchTo(int width, int height);
+
+        int  OtsuThresholding() const;
+
+        Image CreateGray() const;
+
+    private:
+        ImageImpl *Impl{ nullptr };
+    };
+}

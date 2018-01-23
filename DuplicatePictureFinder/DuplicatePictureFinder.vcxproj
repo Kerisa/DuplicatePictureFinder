@@ -92,6 +92,7 @@
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);</AdditionalDependencies>
+      <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -131,6 +132,7 @@
   <ItemGroup>
     <ClCompile Include="crc.cpp" />
     <ClCompile Include="featurevector.cpp" />
+    <ClCompile Include="isodata.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="OpenFiles.cpp" />
     <ClCompile Include="picture.cpp" />
@@ -140,10 +142,12 @@
   <ItemGroup>
     <ClInclude Include="crc.h" />
     <ClInclude Include="featurevector.h" />
+    <ClInclude Include="isodata.h" />
     <ClInclude Include="OpenFiles.h" />
     <ClInclude Include="picture.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="svd.h" />
+    <ClInclude Include="Utility.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>

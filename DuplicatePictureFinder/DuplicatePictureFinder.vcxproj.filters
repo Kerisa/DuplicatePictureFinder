@@ -36,6 +36,9 @@
     <ClCompile Include="svd.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="isodata.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="picture.h">
@@ -57,6 +60,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="svd.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="isodata.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Utility.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

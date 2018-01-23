@@ -5,6 +5,7 @@
 #include "picture.h"
 #include "crc.h"
 #include "svd.h"
+#include "isodata.h"
 
 bool FeatureVector::CrcInitialized = false;
 
@@ -155,6 +156,20 @@ void FeatureVector::svd()
     }
     
     SVD(mat, mData.size(), row_count);
+}
+
+bool FeatureVector::IsoData()
+{
+    Point *input_data = new Point[mData.size()];
+    int idx = 0;
+    for (auto it = mData.begin(); it != mData.end(); ++it)
+    {
+        input_data[idx].Set(it->second.histogram, it->second.filename.c_str());
+        assert(input_data[idx].totle_count == it->second.pixelcount);
+        ++idx;
+    }
+    isodata_entrance(input_data, mData.size());
+    return false;
 }
 
 float FeatureVector::Calc(const FeatureData &src, const FeatureData &dst)

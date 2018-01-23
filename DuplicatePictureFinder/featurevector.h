@@ -75,6 +75,7 @@ public:
     
     // ÊÔÒ»ÏÂsvd
     void svd();
+    bool IsoData();
 
 private:
     inline int min(int t, int v) { return t < v ? t : v; }

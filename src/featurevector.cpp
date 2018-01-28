@@ -266,7 +266,7 @@ float Alisa::ImageFeatureVector::CalcGroup(
             for (int j = 0; j < src.size(); ++j)
             {
                 const int *ptr = nullptr;
-                auto ret = dst[j]->second.GetHistogram(&ptr);
+                auto ret = src[j]->second.GetHistogram(&ptr);
                 assert(ret);
                 s_tot += (float)ptr[i] / src.size() / src[j]->second.GetPixelCount();
             }

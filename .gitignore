@@ -10,3 +10,5 @@ Release
 *.log
 *.aps
 *.tmp
+*.iobj
+*.ipdb

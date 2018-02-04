@@ -44,6 +44,11 @@ namespace Alisa
     {
     public:
         typedef std::map<unsigned int, FeatureData> SingleDataMap;
+        enum ProcessState{
+            STATE_NOT_START,
+            STATE_PROCESSING,
+            STATE_FINISH,
+        };
 
     private:
         struct __helpdata
@@ -77,6 +82,7 @@ namespace Alisa
         void Clear();
         bool AddPicture(const wchar_t * filename, const Image & img);
         bool DivideGroup();
+        std::vector<std::vector<string_t>> GetGroupResult() const;
 
         // 试一下svd
         void svd();
@@ -100,6 +106,8 @@ namespace Alisa
         int mDimension;                     // = 0x100 / mcDivideRegion
         const float mcThreshold = 0.95f;    // 判断图像相似的阈值
         int mIterations;                    // 计算迭代的次数
+
+        ProcessState mProcessState;
 
         SingleDataMap mData;
         std::vector<std::vector<SingleDataMap::iterator>> mGroup;

@@ -153,5 +153,5 @@ int main8(int argc, wchar_t **argv);
 int wmain(int argc, wchar_t **argv)
 {
     //return main2(GetModuleHandle(NULL), NULL, NULL, SW_SHOWNORMAL);
-    return main8(argc, argv);
+    return main3(argc, argv);
 }

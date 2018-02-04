@@ -82,11 +82,14 @@ bool Alisa::ImageFeatureVector::Initialize(int _iterations, int _DivideRegion)
     mIterations = _iterations;
     mDivideRegion = _DivideRegion;
     mDimension = (0x100 + _DivideRegion - 1) / _DivideRegion;
+    mProcessState = STATE_NOT_START;
     return true;
 }
 
 void Alisa::ImageFeatureVector::Clear()
 {
+    mProcessState = STATE_NOT_START;
+
     mIterations = 0;
     mData.clear();
     std::map<unsigned int, FeatureData>().swap(mData);
@@ -110,11 +113,16 @@ bool Alisa::ImageFeatureVector::AddPicture(const wchar_t * filename, const Image
         assert(0);
         return false;
     }
+
+    // 添加图像会影响结果
+    mProcessState = STATE_NOT_START;
     return true;
 }
 
 bool Alisa::ImageFeatureVector::DivideGroup()
 {
+    mProcessState = STATE_PROCESSING;
+
     // 最初每张图像各成一组
     for (auto it = mData.begin(); it != mData.end(); ++it)
     {
@@ -156,6 +164,10 @@ bool Alisa::ImageFeatureVector::DivideGroup()
 
     delete[] hd;
 
+    mProcessState = STATE_FINISH;
+
+    auto _result = GetGroupResult();
+
 #if 1
 //#ifdef _DEBUG
     setlocale(LC_ALL, "");
@@ -179,6 +191,27 @@ bool Alisa::ImageFeatureVector::DivideGroup()
 #endif
 
     return true;
+}
+
+std::vector<std::vector<string_t>> Alisa::ImageFeatureVector::GetGroupResult() const
+{
+    std::vector<std::vector<string_t>> result;
+    if (mProcessState != STATE_FINISH)
+        return result;
+
+    for (auto & g : mGroup)
+    {
+        if (g.size() <= 1)  // 没有重复
+            continue;
+
+        result.push_back(std::vector<string_t>());
+        auto & curGroup = result.back();
+        for (auto & f : g)
+        {
+            curGroup.push_back(f->second.GetFilename());
+        }
+    }
+    return result;
 }
 
 void Alisa::ImageFeatureVector::svd()

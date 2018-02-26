@@ -1,10 +1,14 @@
 
+#include <assert.h>
+#include <iterator>
 #include <string.h>
+#include <stdio.h>
+#include <vector>
+
 #include "Utility.h"
 #include "picture.h"
 #include "libpng/png.h"
 #include "libjpeg/jpeglib.h"
-
 
 
 struct Jpg_error_mgr
@@ -27,6 +31,7 @@ void JpgErrorExitRoutine(j_common_ptr cinfo)
 ////////////////////////////////////////////////////////////////////////////////
 
 
+#if 0
 int GetImageType(FILE *infile)
 {
     const unsigned char png_magic[] = { 0x89, 0x50, 0x4e, 0x47 };
@@ -957,7 +962,7 @@ bool CreateGray(const ImageInfo * in, ImageInfo * out)
     else
         return false;
 }
-
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -972,9 +977,11 @@ namespace Alisa
         ~ImageImpl() = default;
 
         bool Open(const string_t & filename);
+        bool NewImage(ImageInfo info);
         bool SaveTo(const string_t & filename, E_ImageType type);
         void Clear();
         ImageInfo GetImageInfo() const;
+        bool CopyPixelInLine(int dstLineOffset, int dstRowOffset, ImageImpl * srcObj, int srcLineOffset, int srcRowOffset, int cnt = -1);
         void ModifyPixels(std::function<void(int row, int col, Pixel &)> func);
         void WalkPixels(std::function<void(int row, int col, const Pixel &)> func) const;
         bool StretchTo(int width, int height);
@@ -1044,6 +1051,11 @@ bool Alisa::Image::Open(const string_t & filename)
     return Impl->Open(filename);
 }
 
+bool Alisa::Image::NewImage(ImageInfo info)
+{
+    return Impl->NewImage(info);
+}
+
 bool Alisa::Image::SaveTo(const string_t & filename, E_ImageType type)
 {
     return Impl->SaveTo(filename, type);
@@ -1067,6 +1079,11 @@ Alisa::ImageInfo Alisa::Image::GetImageInfo() const
 void Alisa::Image::Clear()
 {
     return Impl->Clear();
+}
+
+bool Alisa::Image::CopyPixelInLine(int dstLineOffset, int dstRowOffset, Image * srcObj, int srcLineOffset, int srcRowOffset, int cnt)
+{
+    return Impl->CopyPixelInLine(dstLineOffset, dstRowOffset, srcObj->Impl, srcLineOffset, srcRowOffset, cnt);
 }
 
 void Alisa::Image::ModifyPixels(std::function<void(int row, int col, Pixel &)> func)
@@ -1122,6 +1139,15 @@ bool Alisa::ImageImpl::Open(const string_t & filename)
     return false;
 }
 
+bool Alisa::ImageImpl::NewImage(ImageInfo info)
+{
+    BaseInfo = info;
+    Pixels.resize(info.Height);
+    for (auto & line : Pixels)
+        line.resize(info.Width);
+    return true;
+}
+
 bool Alisa::ImageImpl::SaveTo(const string_t & filename, E_ImageType type)
 {
     switch (type)
@@ -1154,16 +1180,56 @@ Alisa::ImageInfo Alisa::ImageImpl::GetImageInfo() const
     return BaseInfo;
 }
 
+bool Alisa::ImageImpl::CopyPixelInLine(int dstLineOffset, int dstRowOffset, ImageImpl * srcObj, int srcLineOffset, int srcRowOffset, int cnt)
+{
+    if (cnt == -1)
+    {
+        cnt = srcObj->BaseInfo.Width - srcRowOffset;
+    }
+
+    if (cnt <= 0)
+    {
+        assert(0);
+        return false;
+    }
+
+    if (dstLineOffset >= BaseInfo.Height || dstRowOffset + cnt > BaseInfo.Width)
+    {
+        assert(0);
+        return false;
+    }
+
+    if (!srcObj || srcLineOffset >= srcObj->BaseInfo.Height || srcRowOffset + cnt > srcObj->BaseInfo.Width)
+    {
+        assert(0);
+        return false;
+    }
+
+
+    std::copy(
+        stdext::make_checked_array_iterator(srcObj->Pixels[srcLineOffset].data(), srcObj->Pixels[srcLineOffset].size(), srcRowOffset),
+        stdext::make_checked_array_iterator(srcObj->Pixels[srcLineOffset].data(), srcObj->Pixels[srcLineOffset].size(), srcRowOffset + cnt),
+        stdext::make_checked_array_iterator(Pixels[dstLineOffset].data(), Pixels[dstLineOffset].size(), dstRowOffset)
+    );
+    return true;
+}
+
 void Alisa::ImageImpl::ModifyPixels(std::function<void(int row, int col, Pixel &)> func)
 {
-    assert(0);
+    for (size_t row = 0; row < Pixels.size(); ++row)
+    {
+        for (size_t col = 0; col < Pixels[row].size(); ++col)
+        {
+            func(row, col, Pixels[row][col]);
+        }
+    }
 }
 
 void Alisa::ImageImpl::WalkPixels(std::function<void(int row, int col, const Pixel &)> func) const
 {
-    for (int row = 0; row < Pixels.size(); ++row)
+    for (size_t row = 0; row < Pixels.size(); ++row)
     {
-        for (int col = 0; col < Pixels[row].size(); ++col)
+        for (size_t col = 0; col < Pixels[row].size(); ++col)
         {
             func(row, col, Pixels[row][col]);
         }
@@ -1194,9 +1260,9 @@ bool Alisa::ImageImpl::RemoveAlpha()
         return true;
 
     BaseInfo.Component = PixelType_RGB;
-    for (int i = 0; i < Pixels.size(); ++i)
+    for (size_t i = 0; i < Pixels.size(); ++i)
     {
-        for (int k = 0; k < Pixels[i].size(); ++k)
+        for (size_t k = 0; k < Pixels[i].size(); ++k)
         {
             Pixels[i][k].A = 0xff;
         }
@@ -1214,9 +1280,9 @@ bool Alisa::ImageImpl::AddAlpha()
         return false;
 
     BaseInfo.Component = PixelType_RGBA;
-    for (int i = 0; i < Pixels.size(); ++i)
+    for (size_t i = 0; i < Pixels.size(); ++i)
     {
-        for (int k = 0; k < Pixels[i].size(); ++k)
+        for (size_t k = 0; k < Pixels[i].size(); ++k)
         {
             Pixels[i][k].A = 0xff;
         }
@@ -1345,7 +1411,7 @@ bool Alisa::ImageCodec::DecodeBmp(const string_t & filename, ImageImpl * img)
 
 
     img->Pixels.resize(img->BaseInfo.Height);
-    for (int i = 0; i < img->Pixels.size(); ++i)
+    for (size_t i = 0; i < img->Pixels.size(); ++i)
         img->Pixels[i].resize(img->BaseInfo.Width);
 
     for (int i = 0; i < img->BaseInfo.Height; ++i)
@@ -1544,10 +1610,10 @@ bool Alisa::ImageCodec::DecodePng(const string_t & filename, ImageImpl * img)
     img->BaseInfo.Component = pixel_byte;
     
     img->Pixels.resize(height);
-    for (int i = 0; i < img->Pixels.size(); ++i)
+    for (size_t i = 0; i < img->Pixels.size(); ++i)
     {
         img->Pixels[i].resize(width);
-        for (int k = 0; k < img->Pixels[i].size(); ++k)
+        for (size_t k = 0; k < img->Pixels[i].size(); ++k)
         {
             Pixel & p = img->Pixels[i][k];
             p.R = *(lines[img->Pixels.size() - 1 - i] + k * pixel_byte);
@@ -1597,7 +1663,7 @@ bool Alisa::ImageCodec::EncodePng(const string_t & filename, const ImageImpl * i
 #ifdef _UNICODE
     errno_t err = _wfopen_s(&outfile, filename.c_str(), L"wb");
 #else
-    errno_t err = fopen_s(&infile, filename.c_str(), "wb");
+    errno_t err = fopen_s(&outfile, filename.c_str(), "wb");
 #endif
     if (err)
         return false;
@@ -1715,7 +1781,7 @@ bool Alisa::ImageCodec::DecodeJpg(const string_t & filename, ImageImpl * img)
 
         // °´bmp/png°ÑÐÐÏñËØµ¹ÖÃ
         row_arr = new JSAMPROW[cinfo.image_height];
-        for (int i = 0; i < cinfo.image_height; ++i)
+        for (JDIMENSION i = 0; i < cinfo.image_height; ++i)
             row_arr[i] = (JSAMPROW)(ppixels + (cinfo.image_height - i - 1) * row_stride);
         while (cinfo.output_scanline < cinfo.output_height)
             (void)jpeg_read_scanlines(&cinfo, &row_arr[cinfo.output_scanline], 1);
@@ -1723,10 +1789,10 @@ bool Alisa::ImageCodec::DecodeJpg(const string_t & filename, ImageImpl * img)
         jpeg_finish_decompress(&cinfo);
 
         img->Pixels.resize(cinfo.image_height);
-        for (int r = 0; r < img->Pixels.size(); ++r)
+        for (size_t r = 0; r < img->Pixels.size(); ++r)
         {
             img->Pixels[r].resize(cinfo.image_width);
-            for (int w = 0; w < img->Pixels[r].size(); ++w)
+            for (size_t w = 0; w < img->Pixels[r].size(); ++w)
             {
                 auto & p = img->Pixels[r][w];
                 p.R = ppixels[r * row_stride + w * cinfo.num_components];
@@ -1787,9 +1853,9 @@ bool Alisa::ImageCodec::EncodeJpg(const string_t & filename, const ImageImpl * i
     translate = new unsigned char[cinfo.image_width * cinfo.image_height * cinfo.input_components];
     unsigned char *pdst = translate;
     unsigned char *pdst_end = translate + cinfo.image_width * cinfo.image_height * cinfo.input_components;
-    for (int h = 0; h < cinfo.image_height; ++h)
+    for (size_t h = 0; h < cinfo.image_height; ++h)
     {
-        for (int w = 0; w < cinfo.image_width; ++w)
+        for (size_t w = 0; w < cinfo.image_width; ++w)
         {
             const auto & p = img->Pixels[h][w];
             pdst[0] = p.R * p.A / 255 + 255 - p.A;

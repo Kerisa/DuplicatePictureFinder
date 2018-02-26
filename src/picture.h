@@ -1,12 +1,11 @@
 #pragma once
 
-#include <assert.h>
-#include <stdio.h>
 #include <functional>
-#include <vector>
+#include <string>
 
 #include "types.h"
 
+#if 0
 enum E_ImageType
 {
     E_ImageType_Unknown,
@@ -43,6 +42,7 @@ public:
 private:
     ImageInfo(const ImageInfo &) { }
 };
+#endif
 
 #pragma pack(push)
 #pragma pack(1)
@@ -71,7 +71,7 @@ typedef struct {
 
 #pragma pack(pop)
 
-
+#if 0
 int GetImageType(FILE *infile);
 
 bool GetImageInfo_Bmp_Impl(FILE *infile, ImageInfo *pinfo);
@@ -103,6 +103,8 @@ bool StretchPixels_Expand(const ImageInfo *in, ImageInfo *out);
 int OtsuThresholding(const int *histogram, int total);
 
 bool CreateGray(const ImageInfo *in, ImageInfo *out);
+#endif
+
 
 #ifdef _UNICODE
 typedef std::wstring string_t;
@@ -155,6 +157,7 @@ namespace Alisa
         virtual ~Image();
 
         bool Open(const string_t & filename);
+        bool NewImage(ImageInfo info);
         bool SaveTo(const string_t & filename, E_ImageType type);
 
         bool RemoveAlpha();
@@ -163,6 +166,7 @@ namespace Alisa
         ImageInfo GetImageInfo() const;
         void Clear();
 
+        bool CopyPixelInLine(int dstLineOffset, int dstRowOffset, Image * srcObj, int srcLineOffset, int srcRowOffset, int cnt = -1);
         void ModifyPixels(std::function<void(int row, int col, Pixel &)> func);
         void WalkPixels(std::function<void(int row, int col, const Pixel &)> func) const;
 

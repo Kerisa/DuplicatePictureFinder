@@ -139,6 +139,7 @@ int main3(int argc, wchar_t **argv)
     return 0;
 }
 
+#if 0
 int main4(int argc, wchar_t **argv)
 {
     // ²âÊÔËõ·ÅÍ¼Ïñ
@@ -308,3 +309,4 @@ int main6(int argc, wchar_t **argv)
     }
     return 0;
 }
+#endif

@@ -63,51 +63,51 @@ void GetSubFileList(std::vector<std::wstring> &inputPath, std::vector<std::wstri
 
 void OnDropFiles(HDROP hDrop, std::vector<std::wstring> & inputPath)
 {
-	TCHAR szBuffer[MAX_PATH];
-	int iNum = DragQueryFile(hDrop, 0xffffffff, NULL, 0);
+    TCHAR szBuffer[MAX_PATH];
+    int iNum = DragQueryFile(hDrop, 0xffffffff, NULL, 0);
     for (int i = 0; i < iNum; ++i)
     {
         DragQueryFile(hDrop, i, szBuffer, _countof(szBuffer));
         inputPath.push_back(std::wstring(szBuffer));
     }
     DragFinish(hDrop);    
-	return;
+    return;
 }
 
 BOOL PopFileOpenDlg (HWND hwnd, OPENFILENAME * pofn, LPTSTR filename)
 {
-	static TCHAR		szFilter [] = TEXT("所有文件 (*.*)\0*.*\0\0"),
-						szTitle	 [] = TEXT("选择要分析的文件");
+    static TCHAR		szFilter [] = TEXT("所有文件 (*.*)\0*.*\0\0"),
+                        szTitle	 [] = TEXT("选择要分析的文件");
 
-	RtlZeroMemory(pofn, sizeof(OPENFILENAME));
-	pofn->lStructSize       = sizeof(OPENFILENAME);
-	pofn->hwndOwner         = hwnd;
-	pofn->lpstrFilter       = szFilter;
-	pofn->lpstrFile         = filename;
-	pofn->lpstrFileTitle    = NULL;
-	pofn->nMaxFileTitle     = 0;
-	pofn->nMaxFile          = MAX_PATH;
-	pofn->lpstrTitle        = szTitle;
-	pofn->Flags             = OFN_HIDEREADONLY | OFN_FILEMUSTEXIST;// | OFN_ALLOWMULTISELECT;
+    RtlZeroMemory(pofn, sizeof(OPENFILENAME));
+    pofn->lStructSize       = sizeof(OPENFILENAME);
+    pofn->hwndOwner         = hwnd;
+    pofn->lpstrFilter       = szFilter;
+    pofn->lpstrFile         = filename;
+    pofn->lpstrFileTitle    = NULL;
+    pofn->nMaxFileTitle     = 0;
+    pofn->nMaxFile          = MAX_PATH;
+    pofn->lpstrTitle        = szTitle;
+    pofn->Flags             = OFN_HIDEREADONLY | OFN_FILEMUSTEXIST;// | OFN_ALLOWMULTISELECT;
     
-	return GetOpenFileName(pofn);
+    return GetOpenFileName(pofn);
 }
 
 BOOL PopFileSaveDlg (HWND hwnd, OPENFILENAME * pofn, LPTSTR szSaveFile)
 {
-	static TCHAR		szFilter [] = TEXT("文本文件 (*.txt)\0*.txt\0所有文件 (*.*)\0*.*\0\0"),
-						szTitle	 [] = TEXT("保存HASH运算结果");
+    static TCHAR		szFilter [] = TEXT("文本文件 (*.txt)\0*.txt\0所有文件 (*.*)\0*.*\0\0"),
+                        szTitle	 [] = TEXT("保存HASH运算结果");
 
-	RtlZeroMemory(pofn, sizeof(OPENFILENAME));
-	szSaveFile[0]       = 0;
-	pofn->lStructSize   = sizeof(OPENFILENAME);
-	pofn->hwndOwner     = hwnd;
-	pofn->lpstrFilter   = szFilter;
-	pofn->lpstrFile     = szSaveFile;
-	pofn->nMaxFile      = MAX_PATH;
-	pofn->lpstrTitle    = szTitle;
-	pofn->lpstrDefExt   = TEXT("txt");
-	pofn->Flags         = OFN_OVERWRITEPROMPT;
+    RtlZeroMemory(pofn, sizeof(OPENFILENAME));
+    szSaveFile[0]       = 0;
+    pofn->lStructSize   = sizeof(OPENFILENAME);
+    pofn->hwndOwner     = hwnd;
+    pofn->lpstrFilter   = szFilter;
+    pofn->lpstrFile     = szSaveFile;
+    pofn->nMaxFile      = MAX_PATH;
+    pofn->lpstrTitle    = szTitle;
+    pofn->lpstrDefExt   = TEXT("txt");
+    pofn->Flags         = OFN_OVERWRITEPROMPT;
 
-	return GetOpenFileName(pofn);
+    return GetOpenFileName(pofn);
 }

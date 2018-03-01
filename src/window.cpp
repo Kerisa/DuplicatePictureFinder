@@ -149,9 +149,11 @@ int main5(int argc, wchar_t **argv);
 int main6(int argc, wchar_t **argv);
 int main7(int argc, wchar_t **argv);
 int main8(int argc, wchar_t **argv);
+int main_test_pixel(int argc, wchar_t **argv);
 
 int wmain(int argc, wchar_t **argv)
 {
     //return main2(GetModuleHandle(NULL), NULL, NULL, SW_SHOWNORMAL);
+    return main_test_pixel(argc, argv);
     return main3(argc, argv);
 }

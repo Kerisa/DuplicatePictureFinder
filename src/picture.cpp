@@ -1454,6 +1454,7 @@ bool Alisa::ImageCodec::DecodeBmp(const string_t & filename, ImageImpl * img)
     {
         long dummy;
         // 读取时忽略掉每行填充的几个字节
+        // 同时根据高度是否为负数对图像进行翻转
         if (bih.biHeight > 0)
             fread_s(ppixels + i * row_stride, row_stride, 1, row_stride, infile);
         else
@@ -1479,11 +1480,12 @@ bool Alisa::ImageCodec::DecodeBmp(const string_t & filename, ImageImpl * img)
     for (size_t i = 0; i < img->Pixels.size(); ++i)
         img->Pixels[i].resize(img->BaseInfo.Width);
 
+    // 经过翻转后像素顺序均为从左下角到右上角
     for (int i = 0; i < img->BaseInfo.Height; ++i)
     {
         for (int k = 0; k < img->BaseInfo.Width; ++k)
         {
-            Pixel & p = img->Pixels[i][k];
+            Pixel & p = img->Pixels[img->BaseInfo.Height - 1 - i][k];
             unsigned char *ptr = ppixels + i * row_stride + k * img->BaseInfo.Component;
             p.R = *ptr;
             p.G = *(ptr + 1);
@@ -1532,19 +1534,21 @@ bool Alisa::ImageCodec::EncodeBmp(const string_t & filename, const ImageImpl * i
 
     // 内存中像素点的颜色分量顺序是RGB(A)，bmp文件中的顺序是BGR(A)
     unsigned char *buffer = new unsigned char[row_stride];
-    for (int i = 0; i < img->BaseInfo.Height; ++i)
+    for (int i = img->BaseInfo.Height - 1; i >= 0; --i)
     {
         const auto & row = img->Pixels[i];
 
         if (img->BaseInfo.Component == PixelType_RGB)
+        {
             for (int k = 0; k < img->BaseInfo.Width; ++k)
             {
                 buffer[k * 3]     = row[k].B;
                 buffer[k * 3 + 1] = row[k].G;
                 buffer[k * 3 + 2] = row[k].R;
             }
-
+        }
         else if (img->BaseInfo.Component == PixelType_RGBA)
+        {
             for (int k = 0; k < img->BaseInfo.Width; ++k)
             {
                 buffer[k * 4]     = row[k].B;
@@ -1552,7 +1556,7 @@ bool Alisa::ImageCodec::EncodeBmp(const string_t & filename, const ImageImpl * i
                 buffer[k * 4 + 2] = row[k].R;
                 buffer[k * 4 + 3] = row[k].A;
             }
-
+        }
         else
         {
             assert(0);
@@ -1674,6 +1678,13 @@ bool Alisa::ImageCodec::DecodePng(const string_t & filename, ImageImpl * img)
     img->BaseInfo.Width = width;
     img->BaseInfo.Component = pixel_byte;
     
+
+    assert((int)&((Pixel*)0)->R == 0 && (int)&((Pixel*)0)->G == 1 && (int)&((Pixel*)0)->B == 2 && (int)&((Pixel*)0)->A == 3);
+
+    //
+    // png 图像是倒置的，读取到内存后将其倒转，即 Pixels[0] 对应逻辑上的第一行
+    // 如 lines[0] = 文件中的最后一行 = 对应逻辑上/显示上(屏幕坐标系)的第一行 = Pixels[0]
+    //
     img->Pixels.resize(height);
     for (size_t i = 0; i < img->Pixels.size(); ++i)
     {
@@ -1681,10 +1692,10 @@ bool Alisa::ImageCodec::DecodePng(const string_t & filename, ImageImpl * img)
         for (size_t k = 0; k < img->Pixels[i].size(); ++k)
         {
             Pixel & p = img->Pixels[i][k];
-            p.R = *(lines[img->Pixels.size() - 1 - i] + k * pixel_byte);
-            p.G = *(lines[img->Pixels.size() - 1 - i] + k * pixel_byte + 1);
-            p.B = *(lines[img->Pixels.size() - 1 - i] + k * pixel_byte + 2);
-            p.A = pixel_byte == PixelType_RGBA ? *(lines[img->Pixels.size() - 1 - i] + k * pixel_byte + 3) : 0xff;
+            p.R = *(lines[i] + k * pixel_byte);
+            p.G = *(lines[i] + k * pixel_byte + 1);
+            p.B = *(lines[i] + k * pixel_byte + 2);
+            p.A = pixel_byte == PixelType_RGBA ? *(lines[i] + k * pixel_byte + 3) : 0xff;
         }
     }
 
@@ -1757,20 +1768,31 @@ bool Alisa::ImageCodec::EncodePng(const string_t & filename, const ImageImpl * i
 
     lines = new unsigned char*[img->BaseInfo.Height * sizeof(unsigned char*)]; //列指针
 
-    png_int_32 i = 0;
-    png_int_32 h = img->BaseInfo.Height - 1;
-    while (h >= 0)//逆行序读取，因为位图是底到上型
+    //
+    // 同 DecodePng, 将其转置后保存
+    //
+    if (img->BaseInfo.Component == PixelType_RGBA)
     {
-        lines[i] = new unsigned char[img->BaseInfo.Width * img->BaseInfo.Component];
-        for (int w = 0; w < img->BaseInfo.Width; ++w)
+        assert((int)&((Pixel*)0)->R == 0 && (int)&((Pixel*)0)->G == 1 && (int)&((Pixel*)0)->B == 2 && (int)&((Pixel*)0)->A == 3);
+
+        for (png_int_32 i = 0; i < img->BaseInfo.Height; ++i)
         {
-            lines[i][w * img->BaseInfo.Component]     = img->Pixels[h][w].R;
-            lines[i][w * img->BaseInfo.Component + 1] = img->Pixels[h][w].G;
-            lines[i][w * img->BaseInfo.Component + 2] = img->Pixels[h][w].B;
-            if (img->BaseInfo.Component == PixelType_RGBA)
-                lines[i][w * img->BaseInfo.Component + 3] = img->Pixels[h][w].A;
+            lines[i] = new unsigned char[img->BaseInfo.Width * img->BaseInfo.Component];
+            memcpy_s(lines[i], img->BaseInfo.Width * img->BaseInfo.Component, img->Pixels[i].data(), img->BaseInfo.Width * sizeof(Pixel));
         }
-        ++i, --h;
+    }
+    else
+    {
+        for (png_int_32 i = 0; i < img->BaseInfo.Height; ++i)
+        {
+            lines[i] = new unsigned char[img->BaseInfo.Width * img->BaseInfo.Component];
+            for (int w = 0; w < img->BaseInfo.Width; ++w)
+            {
+                lines[i][w * img->BaseInfo.Component]     = img->Pixels[i][w].R;
+                lines[i][w * img->BaseInfo.Component + 1] = img->Pixels[i][w].G;
+                lines[i][w * img->BaseInfo.Component + 2] = img->Pixels[i][w].B;
+            }
+        }
     }
 
     //
@@ -1845,10 +1867,10 @@ bool Alisa::ImageCodec::DecodeJpg(const string_t & filename, ImageImpl * img)
 
         jpeg_start_decompress(&cinfo);
 
-        // 按bmp/png把行像素倒置
+        // jpg储存顺序等于显示顺序
         row_arr = new JSAMPROW[cinfo.image_height];
         for (JDIMENSION i = 0; i < cinfo.image_height; ++i)
-            row_arr[i] = (JSAMPROW)(ppixels + (cinfo.image_height - i - 1) * row_stride);
+            row_arr[i] = (JSAMPROW)(ppixels + (i) * row_stride);
         while (cinfo.output_scanline < cinfo.output_height)
             (void)jpeg_read_scanlines(&cinfo, &row_arr[cinfo.output_scanline], 1);
 
@@ -1940,10 +1962,10 @@ bool Alisa::ImageCodec::EncodeJpg(const string_t & filename, const ImageImpl * i
     jpeg_start_compress(&cinfo, TRUE);
     int row_stride = cinfo.image_width * cinfo.input_components;
 
-    // 储存的时候倒着来
+    // jpg储存顺序等于显示顺序
     JSAMPROW row_pointer[1];	/* pointer to JSAMPLE row[s] */
     while (cinfo.next_scanline < cinfo.image_height) {
-        row_pointer[0] = &translate[(cinfo.image_height - cinfo.next_scanline - 1) * row_stride];
+        row_pointer[0] = &translate[cinfo.next_scanline * row_stride];
         jpeg_write_scanlines(&cinfo, row_pointer, 1);
     }
 

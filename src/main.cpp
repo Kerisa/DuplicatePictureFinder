@@ -139,6 +139,78 @@ int main3(int argc, wchar_t **argv)
     return 0;
 }
 
+int main_test_pixel(int argc, wchar_t **argv)
+{
+    bool b = false;
+    Alisa::Image img;
+    b = img.Open(argv[1]);
+    assert(b);
+    img.ModifyPixels([](int r, int c, Alisa::Pixel & p) {
+        if (r == c && c == 0)
+        {
+            p.A = 0xff; p.R = 0xff; p.G = 0; p.B = 0;
+        }
+    });
+    b = img.SaveTo(string_t(argv[1]) + TEXT("1_1.png"), Alisa::E_ImageType_Png);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("1_2.jpg"), Alisa::E_ImageType_Jpg);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("1_3.bmp"), Alisa::E_ImageType_Bmp);
+    assert(b);
+    img.RemoveAlpha();
+    b = img.SaveTo(string_t(argv[1]) + TEXT("1_4.png"), Alisa::E_ImageType_Png);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("1_5.bmp"), Alisa::E_ImageType_Bmp);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("1_6.jpg"), Alisa::E_ImageType_Jpg);
+    assert(b);
+    //////
+    b = img.Open(argv[2]);
+    assert(b);
+    img.ModifyPixels([](int r, int c, Alisa::Pixel & p) {
+        if (r == c && c == 0)
+        {
+            p.A = 0xff; p.R = 0xff; p.G = 0; p.B = 0;
+        }
+    });
+    b = img.SaveTo(string_t(argv[1]) + TEXT("2_1.png"), Alisa::E_ImageType_Png);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("2_2.jpg"), Alisa::E_ImageType_Jpg);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("2_3.bmp"), Alisa::E_ImageType_Bmp);
+    assert(b);
+    img.RemoveAlpha();
+    b = img.SaveTo(string_t(argv[1]) + TEXT("2_4.png"), Alisa::E_ImageType_Png);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("2_5.bmp"), Alisa::E_ImageType_Bmp);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("2_6.jpg"), Alisa::E_ImageType_Jpg);
+    assert(b);
+    //////
+    b = img.Open(argv[3]);
+    assert(b);
+    img.ModifyPixels([](int r, int c, Alisa::Pixel & p) {
+        if (r == c && c == 0)
+        {
+            p.A = 0xff; p.R = 0xff; p.G = 0; p.B = 0;
+        }
+    });
+    b = img.SaveTo(string_t(argv[1]) + TEXT("3_1.png"), Alisa::E_ImageType_Png);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("3_2.jpg"), Alisa::E_ImageType_Jpg);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("3_3.bmp"), Alisa::E_ImageType_Bmp);
+    assert(b);
+    img.RemoveAlpha();
+    b = img.SaveTo(string_t(argv[1]) + TEXT("3_4.png"), Alisa::E_ImageType_Png);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("3_5.bmp"), Alisa::E_ImageType_Bmp);
+    assert(b);
+    b = img.SaveTo(string_t(argv[1]) + TEXT("3_6.jpg"), Alisa::E_ImageType_Jpg);
+    assert(b);
+    return 0;
+}
+
 #if 0
 int main4(int argc, wchar_t **argv)
 {

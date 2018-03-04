@@ -981,11 +981,12 @@ namespace Alisa
         bool SaveTo(const string_t & filename, E_ImageType type);
         void Clear();
         ImageInfo GetImageInfo() const;
+        const std::vector<std::vector<Pixel>> & GetPixelsGroup() const;
         bool Blend(const ImageImpl *obj, int offsetX, int offsetY, E_ImageBlendMode mode);
         bool CopyPixelInLine(int dstLineOffset, int dstRowOffset, ImageImpl * srcObj, int srcLineOffset, int srcRowOffset, int cnt = -1);
         void ModifyPixels(std::function<void(int row, int col, Pixel &)> func);
         void WalkPixels(std::function<void(int row, int col, const Pixel &)> func) const;
-        bool StretchTo(int width, int height);
+        bool StretchTo(ImageImpl *dst, int width, int height) const;
         int  OtsuThresholding() const;
         Image CreateGray() const;
         bool RemoveAlpha();
@@ -999,6 +1000,8 @@ namespace Alisa
         E_ImageType GetImageType(const string_t & filename);
         Pixel AlphaBlend(const Pixel & src, const Pixel & dst) const;
         Pixel SrcCopy(const Pixel & src, const Pixel & dst) const;
+        bool BilinearInterpolation(ImageImpl *dst, int width, int height) const;
+        bool LocalMeans(ImageImpl *dst, int width, int height) const;
 
     private:
         ImageInfo BaseInfo;
@@ -1079,6 +1082,11 @@ Alisa::ImageInfo Alisa::Image::GetImageInfo() const
     return Impl->GetImageInfo();
 }
 
+const std::vector<std::vector<Alisa::Pixel>>& Alisa::Image::GetPixelsGroup() const
+{
+    return Impl->GetPixelsGroup();
+}
+
 void Alisa::Image::Clear()
 {
     return Impl->Clear();
@@ -1104,9 +1112,9 @@ void Alisa::Image::WalkPixels(std::function<void(int row, int col, const Pixel &
     Impl->WalkPixels(func);
 }
 
-bool Alisa::Image::StretchTo(int width, int height)
+bool Alisa::Image::StretchTo(Image *dst, int width, int height) const
 {
-    return Impl->StretchTo(width, height);
+    return Impl->StretchTo(dst->Impl, width, height);
 }
 
 int Alisa::Image::OtsuThresholding() const
@@ -1186,6 +1194,11 @@ void Alisa::ImageImpl::Clear()
 Alisa::ImageInfo Alisa::ImageImpl::GetImageInfo() const
 {
     return BaseInfo;
+}
+
+const std::vector<std::vector<Alisa::Pixel>> & Alisa::ImageImpl::GetPixelsGroup() const
+{
+    return Pixels;
 }
 
 Alisa::Pixel Alisa::ImageImpl::AlphaBlend(const Pixel & src, const Pixel & dst) const
@@ -1300,21 +1313,150 @@ void Alisa::ImageImpl::WalkPixels(std::function<void(int row, int col, const Pix
     }
 }
 
-bool Alisa::ImageImpl::StretchTo(int width, int height)
+bool Alisa::ImageImpl::LocalMeans(ImageImpl *dst, int width, int height) const
 {
-    assert(0); 
-    return false;
+    // 局部均值缩小
+
+    const float k1 = (float)BaseInfo.Width / width;      //  > 1
+    const float k2 = (float)BaseInfo.Height / height;    //  > 1
+    assert(k1 >= 1 && k2 >= 1);
+
+    const int block = (int)k1 * (int)k2;
+
+    dst->BaseInfo = BaseInfo;
+    dst->BaseInfo.Width = width;
+    dst->BaseInfo.Height = height;
+    dst->Pixels.resize(height);
+    for (int i = 0; i < height; ++i)
+        dst->Pixels[i].resize(width);
+
+    if (BaseInfo.Component == 3 || BaseInfo.Component == 4)
+    {
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                int r = 0, g = 0, b = 0, a = 0;
+                for (int j = 0; j < (int)k2; ++j)
+                {
+                    for (int i = 0; i < (int)k1; ++i)
+                    {
+                        const Pixel & p = Pixels[y * k2 + j][x * k1 + i];
+                        r += p.R;
+                        g += p.G;
+                        b += p.B;
+                        a += p.A;
+                    }
+                }
+                Pixel & target = dst->Pixels[y][x];
+
+                assert(r / block < 0x100);
+                assert(g / block < 0x100);
+                assert(b / block < 0x100);
+                assert(a / block < 0x100);
+
+                target.R = r / block;
+                target.G = g / block;
+                target.B = b / block;
+                target.A = a / block;
+            }
+        }
+    }
+    else
+    {
+        assert(0);
+        return false;
+    }
+
+    return true;
+}
+
+bool Alisa::ImageImpl::BilinearInterpolation(ImageImpl *dst, int width, int height) const
+{
+    // 双线性插值
+
+    const float k1 = (float)width / BaseInfo.Width;      //  > 1
+    const float k2 = (float)height / BaseInfo.Height;    //  > 1
+    //assert(k1 >= 1 && k2 >= 1);
+
+    dst->BaseInfo = BaseInfo;
+    dst->BaseInfo.Width = width;
+    dst->BaseInfo.Height = height;
+    dst->Pixels.resize(height);
+    for (int y = 0; y < height; ++y)
+        dst->Pixels[y].resize(width);
+
+    for (int y = 0; y < BaseInfo.Height; ++y)
+    {
+        for (int x = 0; x < BaseInfo.Width; ++x)
+        {
+            int top = y * k2;
+            int bottom = (y + 1) * k2;
+            int left = x * k1;
+            int right = (x + 1) * k1;
+
+            int block = (bottom - top) * (right - left);
+
+            const Pixel & p1 = Pixels[y][x];
+            const Pixel & p2 = x < BaseInfo.Width - 1 ? Pixels[y][x + 1] : p1;
+            const Pixel & p3 = Pixels[(y < BaseInfo.Height - 1 ? y + 1 : BaseInfo.Height - 1)][x];
+            const Pixel & p4 = x < BaseInfo.Width - 1 ? Pixels[(y < BaseInfo.Height - 1 ? y + 1 : BaseInfo.Height - 1)][x + 1] : p3;
+
+            for (int j = top; j < bottom; ++j)
+            {
+                for (int i = left; i < right; ++i)
+                {
+                    Pixel & targetPixel = dst->Pixels[j][i];
+
+                    float f1 = (float)(bottom - j) * (right - i) / block;       // (1-u)(1-v)
+                    float f2 = (float)(bottom - j) * (i - left) / block;        // u(1-v)
+                    float f3 = (float)(j - top) * (right - i) / block;          // (1-u)v
+                    float f4 = (float)(j - top) * (i - left) / block;           // uv
+
+                    int r = f1 * p1.R + f2 * p2.R + f3 * p3.R + f4 * p4.R;
+                    int g = f1 * p1.G + f2 * p2.G + f3 * p3.G + f4 * p4.G;
+                    int b = f1 * p1.B + f2 * p2.B + f3 * p3.B + f4 * p4.B;
+                    int a = f1 * p1.A + f2 * p2.A + f3 * p3.A + f4 * p4.A;
+
+                    assert(r < 0x100);
+                    assert(g < 0x100);
+                    assert(b < 0x100);
+
+                    targetPixel.R = r;
+                    targetPixel.G = g;
+                    targetPixel.B = b;
+                    targetPixel.A = a;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+bool Alisa::ImageImpl::StretchTo(ImageImpl *dst, int width, int height) const
+{
+    if (BaseInfo.Height <= 0 || BaseInfo.Width <= 0 || width <= 0 || height <= 0)
+    {
+        assert(0);
+        return false;
+    }
+
+    if (width < BaseInfo.Width && height <= BaseInfo.Height)
+        return LocalMeans(dst, width, height);
+    else
+        return BilinearInterpolation(dst, width, height);
 }
 
 int Alisa::ImageImpl::OtsuThresholding() const
 {
-    assert(0); 
+    assert(0);
     return 0;
 }
 
 Alisa::Image Alisa::ImageImpl::CreateGray() const
 {
-    assert(0); 
+    assert(0);
     return Image();
 }
 
@@ -1369,7 +1511,10 @@ Alisa::E_ImageType Alisa::ImageImpl::GetImageType(const string_t & filename)
     errno_t err = fopen_s(&infile, filename.c_str(), "rb");
 #endif
     if (err)
+    {
+        assert(0);
         return E_ImageType_Unknown;
+    }
 
     unsigned char buf[4];
     fread_s(buf, sizeof(buf), sizeof(buf), 1, infile);
@@ -1561,11 +1706,13 @@ bool Alisa::ImageCodec::EncodeBmp(const string_t & filename, const ImageImpl * i
         {
             assert(0);
             delete[] buffer;
+            fclose(outfile);
             return false;
         }
         fwrite(buffer, 1, row_stride, outfile);
         fwrite(zero_fill, 1, aligned_width - row_stride, outfile);
     }
+
     fclose(outfile);
 
     delete[] buffer;
@@ -1894,6 +2041,7 @@ bool Alisa::ImageCodec::DecodeJpg(const string_t & filename, ImageImpl * img)
         delete[] ppixels;
     }
     jpeg_destroy_decompress(&cinfo);
+    fclose(infile);
     return JCS_RGB == cinfo.out_color_space;
 }
 

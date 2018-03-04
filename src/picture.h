@@ -168,8 +168,9 @@ namespace Alisa
 
         bool RemoveAlpha();
         bool AddAlpha();
-        
+
         ImageInfo GetImageInfo() const;
+        const std::vector<std::vector<Pixel>> & GetPixelsGroup() const;
         void Clear();
 
         bool Blend(const Image *image, int offsetX, int offsetY, E_ImageBlendMode mode);
@@ -181,7 +182,7 @@ namespace Alisa
         //Image GetRawPixelData() const;
         //bool UpdateRawPixelData(const Image & image);
 
-        bool StretchTo(int width, int height);
+        bool StretchTo(Image *dst, int width, int height) const;
 
         int  OtsuThresholding() const;
 

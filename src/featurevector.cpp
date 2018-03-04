@@ -45,11 +45,22 @@ bool Alisa::FeatureData::BuildHistogram(const Image & img, const string_t & file
 
     if (img.GetImageInfo().Component == PixelType_RGB || img.GetImageInfo().Component == PixelType_RGBA)
     {
-        img.WalkPixels([this](int row, int col, const Pixel & pixel) {
-            ++Histogram[pixel.R / DivideRegion * Dimension * Dimension +
-                        pixel.G / DivideRegion * Dimension +
-                        pixel.B / DivideRegion];
-        });
+        auto pixels = img.GetPixelsGroup();
+        for (int h = 0; h < pixels.size(); ++h)
+        {
+            for (int w = 0; w < pixels[h].size(); ++w)
+            {
+                auto & p = pixels[h][w];
+                ++Histogram[p.R / DivideRegion * Dimension * Dimension +
+                    p.G / DivideRegion * Dimension +
+                    p.B / DivideRegion];
+            }
+        }
+        //img.WalkPixels([this](int row, int col, const Pixel & pixel) {
+        //    ++Histogram[pixel.R / DivideRegion * Dimension * Dimension +
+        //                pixel.G / DivideRegion * Dimension +
+        //                pixel.B / DivideRegion];
+        //});
         return true;
     }
     else
@@ -145,8 +156,8 @@ bool Alisa::ImageFeatureVector::DivideGroup()
                 float distance = CalcGroup(mGroup[i], mGroup[j], &hd[i], &hd[j]);
                 //float distance = CalcGroup2(mGroup[i], mGroup[j], &hd[i], &hd[j]);
 
-#if 1
-//#ifdef _DEBUG
+//#if 0
+#ifdef _DEBUG
                 if (!mGroup[i].empty() && !mGroup[j].empty())
                     fprintf(stderr, "Group[%d](%d) to Group[%d](%d): Distance=%0.6f\r\n",
                         i, mGroup[i].size(), j, mGroup[j].size(), distance);
@@ -171,22 +182,25 @@ bool Alisa::ImageFeatureVector::DivideGroup()
 #if 1
 //#ifdef _DEBUG
     setlocale(LC_ALL, "");
-    FILE *debug_out;
-    fopen_s(&debug_out, "debug_out.log", "wb");
-    int gcnt = 0;
-    for (int i = 0; i < mGroup.size(); ++i)
+    FILE *debug_out = NULL;
+    errno_t err = fopen_s(&debug_out, "debug_out.log", "wb");
+    if (!err)
     {
-        if (mGroup[i].size() <= 1)
-            continue;
+        int gcnt = 0;
+        for (int i = 0; i < mGroup.size(); ++i)
+        {
+            if (mGroup[i].size() <= 1)
+                continue;
 
-        fprintf(debug_out, "Group: %d, element: %d\r\n", gcnt, mGroup[i].size());
-        for (auto it = mGroup[i].begin(); it != mGroup[i].end(); ++it)
-            fprintf(debug_out, "    %ws\r\n", (*it)->second.GetFilename().c_str());
-        fprintf(debug_out, "\r\n");
+            fprintf(debug_out, "Group: %d, element: %d\r\n", gcnt, mGroup[i].size());
+            for (auto it = mGroup[i].begin(); it != mGroup[i].end(); ++it)
+                fprintf(debug_out, "    %ws\r\n", (*it)->second.GetFilename().c_str());
+            fprintf(debug_out, "\r\n");
 
-        ++gcnt;
+            ++gcnt;
+        }
+        fclose(debug_out);
     }
-    fclose(debug_out);
     setlocale(LC_ALL, "C");
 #endif
 

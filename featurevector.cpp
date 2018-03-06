@@ -154,8 +154,8 @@ bool Alisa::ImageFeatureVector::DivideGroup()
                 float distance = CalcGroup(mGroup[i], mGroup[j], &hd[i], &hd[j]);
                 //float distance = CalcGroup2(mGroup[i], mGroup[j], &hd[i], &hd[j]);
 
-#if 1
-//#ifdef _DEBUG
+//#if 1
+#ifdef _DEBUG
                 if (!mGroup[i].empty() && !mGroup[j].empty())
                     fprintf(stderr, "Group[%d](%d) to Group[%d](%d): Distance=%0.6f\r\n",
                         i, mGroup[i].size(), j, mGroup[j].size(), distance);

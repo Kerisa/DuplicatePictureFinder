@@ -14,12 +14,14 @@ class MainWindow;
 class QPicThread;
 class QGraphicsScene;
 class QTreeWidgetItem;
-
+class QGraphicsView;
+class QLabel;
 
 struct DisplayImage
 {
     DisplayImage();
     ~DisplayImage();
+    QString fileName;
     QImage *image{nullptr};
     QGraphicsScene *scene{nullptr};
 };
@@ -43,6 +45,10 @@ public:
     ~MainWindow();
 
     void SetGroupResult(const std::vector<std::vector<TreeViewImageInfo>> & group) { pictureGroup = group; }
+    void RefreshGraphicImage(const QString &filename, DisplayImage *img, QGraphicsView *view, QLabel *filenameLabel, bool loadFile = true);
+
+protected:
+    virtual void resizeEvent(QResizeEvent *event);
 
 private:
     void InitMenuBar();

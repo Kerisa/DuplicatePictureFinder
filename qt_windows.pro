@@ -32,7 +32,8 @@ SOURCES += \
     crc.cpp \
     featurevector.cpp \
     OpenFiles.cpp \
-    picture.cpp
+    picture.cpp \
+    customgraphicsview.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -42,7 +43,8 @@ HEADERS += \
     picture.h \
     types.h \
     Utility.h \
-    customtreewidget.h
+    customtreewidget.h \
+    customgraphicsview.h
 
 FORMS += \
         mainwindow.ui

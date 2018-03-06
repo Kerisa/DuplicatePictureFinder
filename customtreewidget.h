@@ -11,6 +11,7 @@ class CustomTreeWidget : public QTreeWidget
 public:
     explicit CustomTreeWidget(QWidget *parent = Q_NULLPTR);
     void InitTreeView();
+    void AdjustColumeWidth();
     void updateParentItem(QTreeWidgetItem* item);
 
 protected:

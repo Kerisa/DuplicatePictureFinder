@@ -15,6 +15,18 @@ void CustomTreeWidget::InitTreeView()
 {
     setColumnCount(4);
 
+    QStringList list;
+    list.push_back("Filename");
+    list.push_back("Size");
+    list.push_back("Solution");
+    list.push_back("ModifyTime");
+    setHeaderLabels(list);
+
+    AdjustColumeWidth();
+}
+
+void CustomTreeWidget::AdjustColumeWidth()
+{
     //设置列宽
     constexpr int colWidth[4] = {700, 120, 100, 160};
     constexpr int otherColWidth = colWidth[1] + colWidth[2] + colWidth[3];
@@ -23,13 +35,6 @@ void CustomTreeWidget::InitTreeView()
     setColumnWidth(1, width() * 0.1);
     setColumnWidth(2, width() * 0.1);
     setColumnWidth(3, width() * 0.16);
-
-    QStringList list;
-    list.push_back("Filename");
-    list.push_back("Size");
-    list.push_back("Solution");
-    list.push_back("ModifyTime");
-    setHeaderLabels(list);
 }
 
 void CustomTreeWidget::mouseReleaseEvent(QMouseEvent *event)

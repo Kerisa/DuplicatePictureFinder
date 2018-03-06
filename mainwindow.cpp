@@ -13,7 +13,8 @@
 #include <Windows.h>
 #include <QDateTime>
 #include <QFileDialog>
-
+#include <QFileIconProvider>
+#include <QResizeEvent>
 
 DisplayImage::DisplayImage()
     : image(new QImage), scene(new QGraphicsScene)
@@ -51,6 +52,41 @@ MainWindow::~MainWindow()
     if (procThread) delete procThread;
 }
 
+void MainWindow::RefreshGraphicImage(const QString &filename, DisplayImage *img, QGraphicsView *view, QLabel *filenameLabel, bool loadFile)
+{
+    if (loadFile)
+    {
+        if (img->image->load(filename))
+        {
+            img->scene->clear();
+            QRectF ctlSize = view->sceneRect();
+            img->scene->addPixmap(QPixmap::fromImage((*img->image)).scaled(view->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+
+            view->setScene(img->scene);
+            view->show();
+
+            img->fileName = filename;
+            filenameLabel->setText(filename);
+
+            view->setUserData(0, reinterpret_cast<QObjectUserData*>(img));
+        }
+        else
+        {
+            //QMessageBox::about(this, "title", "load image failed.");
+        }
+    }
+    else
+    {
+        // 缩放窗口时不从文件读取
+        img->scene->clear();
+        QRectF ctlSize = view->sceneRect();
+        img->scene->addPixmap(QPixmap::fromImage((*img->image)).scaled(view->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+
+        view->setScene(img->scene);
+        view->show();
+    }
+}
+
 void MainWindow::OnPictureProcessFinish()
 {
     ui->searchResult_treeWidget->clear();
@@ -74,6 +110,8 @@ void MainWindow::OnPictureProcessFinish()
             auto entry = new QTreeWidgetItem(content);
             entry->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
             entry->setCheckState(0, f == 0 ? Qt::Unchecked : Qt::Checked);
+            QFileIconProvider icon;
+            entry->setIcon(0, icon.icon(pictureGroup[i][f].fileInfo));
             top->addChild(entry);
         }
     }
@@ -89,39 +127,11 @@ void MainWindow::OnTableItemClicked(bool left, QTreeWidgetItem* item, int colume
     auto filename = item->text(0);
     if (left)
     {
-        if (imageLeft.image->load(filename))
-        {
-            imageLeft.scene->clear();
-            QRectF ctlSize = ui->leftImg_graphicsView->sceneRect();
-            imageLeft.scene->addPixmap(QPixmap::fromImage((*imageLeft.image)).scaled(ui->leftImg_graphicsView->size(), Qt::KeepAspectRatio));
-
-            ui->leftImg_graphicsView->setScene(imageLeft.scene);
-            ui->leftImg_graphicsView->show();
-
-            ui->leftImageName_Label->setText(filename);
-        }
-//        else
-//        {
-//            QMessageBox::about(this, "title", "load image failed.");
-//        }
+        RefreshGraphicImage(filename, &imageLeft, ui->leftImg_graphicsView, ui->leftImageName_Label);
     }
     else
     {
-        if (imageRight.image->load(filename))
-        {
-            imageRight.scene->clear();
-            QRectF ctlSize = ui->rightImg_graphicsView->sceneRect();
-            imageRight.scene->addPixmap(QPixmap::fromImage((*imageRight.image)).scaled(ui->rightImg_graphicsView->size(), Qt::KeepAspectRatio));
-
-            ui->rightImg_graphicsView->setScene(imageRight.scene);
-            ui->rightImg_graphicsView->show();
-
-            ui->rightImageName_Label->setText(filename);
-        }
-//        else
-//        {
-//            QMessageBox::about(this, "title", "load image failed.");
-//        }
+        RefreshGraphicImage(filename, &imageRight, ui->rightImg_graphicsView, ui->rightImageName_Label);
     }
 }
 
@@ -267,17 +277,18 @@ void QPicThread::run()
     Alisa::ImageFeatureVector fv;
     fv.Initialize();
 
-    std::vector<Alisa::Image> images;
-    images.resize(out.size());
+    std::vector<Alisa::ImageInfo> imagesInfo;
     for (size_t i = 0; i < out.size(); ++i)
     {
-        if (!images[i].Open(out[i]))
+        Alisa::Image image;
+        if (!image.Open(out[i]))
         {
             assert(0);
             continue;
         }
 
-        fv.AddPicture(out[i].c_str(), images[i]);
+        imagesInfo.push_back(image.GetImageInfo());
+        fv.AddPicture(out[i].c_str(), image);
     }
 
     fv.DivideGroup();
@@ -296,7 +307,7 @@ void QPicThread::run()
             {
                 if (!out[k].compare(fileName))
                 {
-                    auto imageBaseInfo = images[k].GetImageInfo();
+                    auto & imageBaseInfo = imagesInfo[k];
                     info.height = imageBaseInfo.Height;
                     info.width = imageBaseInfo.Width;
                     info.component = imageBaseInfo.Component;
@@ -323,7 +334,9 @@ void MainWindow::on_addPath_Btn_clicked()
     );
     if (!dir.isEmpty())
     {
-        ui->searchPathList->addItem(dir);
+        QFileIconProvider icon;
+        QListWidgetItem *item = new QListWidgetItem(icon.icon(QFileIconProvider::Folder), dir);
+        ui->searchPathList->addItem(item);
     }
 }
 
@@ -331,4 +344,34 @@ void MainWindow::on_removePath_Btn_clicked()
 {
     auto row = ui->searchPathList->currentRow();
     delete ui->searchPathList->takeItem((row));
+}
+
+void MainWindow::resizeEvent(QResizeEvent* event)
+{
+    QMainWindow::resizeEvent(event);
+
+    const int halfWidth = event->size().width() / 2;
+    const int halfHeight = event->size().height() / 2;
+
+    ui->leftImg_graphicsView->setGeometry(6, 6, halfWidth - 9, halfHeight - 25);
+    ui->rightImg_graphicsView->setGeometry(halfWidth + 3, 6, halfWidth - 9, halfHeight - 25);
+
+    ui->leftImageName_Label->setGeometry(6, halfHeight - 18, halfWidth - 12, 20);
+    ui->rightImageName_Label->setGeometry(halfWidth + 3, halfHeight - 18, halfWidth - 6, 20);
+
+    ui->searchResult_treeWidget->setGeometry(6, halfHeight + 5, halfWidth * 2 - 12, halfHeight * 0.55);
+
+    ui->label->setGeometry(6, halfHeight * 1.57 + 10, 61, 21);
+    ui->addPath_Btn->setGeometry(halfWidth * 2 - 6 - 75 - 30 - 30, halfHeight * 1.57 + 10, 23, 23);
+    ui->removePath_Btn->setGeometry(halfWidth * 2 - 6 - 75 - 30, halfHeight * 1.57 + 10, 23, 23);
+    ui->startSearchBtn->setGeometry(halfWidth * 2 - 6 - 75, halfHeight * 1.57 + 10, 75, 23);
+
+    ui->searchPathList->setGeometry(6, halfHeight * 1.57 + 35, halfWidth * 2 - 12, halfHeight * 0.43 - 95);
+
+    // 调整树列表的列宽
+    ui->searchResult_treeWidget->AdjustColumeWidth();
+
+    // 缩放图像
+    RefreshGraphicImage(ui->leftImageName_Label->text(), &imageLeft, ui->leftImg_graphicsView, ui->leftImageName_Label, false);
+    RefreshGraphicImage(ui->rightImageName_Label->text(), &imageRight, ui->rightImg_graphicsView, ui->rightImageName_Label, false);
 }

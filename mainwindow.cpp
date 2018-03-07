@@ -54,13 +54,17 @@ MainWindow::~MainWindow()
 
 void MainWindow::RefreshGraphicImage(const QString &filename, DisplayImage *img, QGraphicsView *view, QLabel *filenameLabel, bool loadFile)
 {
+    // 图像按控件大小显示时会略微超出显示区域
+    auto size = view->size();
+    size -= QSize(2, 2);
+
     if (loadFile)
     {
         if (img->image->load(filename))
         {
             img->scene->clear();
             QRectF ctlSize = view->sceneRect();
-            img->scene->addPixmap(QPixmap::fromImage((*img->image)).scaled(view->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            img->scene->addPixmap(QPixmap::fromImage((*img->image)).scaled(size, Qt::KeepAspectRatio, Qt::SmoothTransformation));
 
             view->setScene(img->scene);
             view->show();
@@ -78,12 +82,15 @@ void MainWindow::RefreshGraphicImage(const QString &filename, DisplayImage *img,
     else
     {
         // 缩放窗口时不从文件读取
-        img->scene->clear();
-        QRectF ctlSize = view->sceneRect();
-        img->scene->addPixmap(QPixmap::fromImage((*img->image)).scaled(view->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        if (view->userData(0))
+        {
+            img->scene->clear();
+            QRectF ctlSize = view->sceneRect();
+            img->scene->addPixmap(QPixmap::fromImage((*img->image)).scaled(size, Qt::KeepAspectRatio, Qt::SmoothTransformation));
 
-        view->setScene(img->scene);
-        view->show();
+            view->setScene(img->scene);
+            view->show();
+        }
     }
 }
 
@@ -157,7 +164,11 @@ void MainWindow::MenuAct_Option()
 
 void MainWindow::MenuAct_DeleteCheckedFile()
 {
-    QMessageBox::about(this, "title", "DeleteCheckedFile.");
+    // "确认将所有勾选的文件移除到回收站中？"
+    if (QMessageBox::No == QMessageBox::question(this, "cofirm delete", "delete checked files to recycle ?", QMesssageBox::Yes, QMessageBox::No))
+        return;
+
+
 }
 
 void MainWindow::InitMenuBar()
@@ -274,12 +285,20 @@ void QPicThread::run()
         path.push_back(qs.toStdWString());
     GetSubFileList(path, out);
 
+    std::vector<Alisa::ImageInfo> imagesInfo;
+    imagesInfo.resize(out.size());
+
     Alisa::ImageFeatureVector fv;
     fv.Initialize();
 
-    std::vector<Alisa::ImageInfo> imagesInfo;
     for (size_t i = 0; i < out.size(); ++i)
     {
+        QString extension = QString::fromStdWString(out[i].substr(out[i].find_last_of('.') + 1));
+        if (extension.compare("png", Qt::CaseInsensitive) &&
+            extension.compare("bmp", Qt::CaseInsensitive) &&
+            extension.compare("jpg", Qt::CaseInsensitive))
+                continue;
+
         Alisa::Image image;
         if (!image.Open(out[i]))
         {
@@ -287,7 +306,7 @@ void QPicThread::run()
             continue;
         }
 
-        imagesInfo.push_back(image.GetImageInfo());
+        imagesInfo[i] = image.GetImageInfo();
         fv.AddPicture(out[i].c_str(), image);
     }
 
@@ -332,12 +351,87 @@ void MainWindow::on_addPath_Btn_clicked()
         "",
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
     );
-    if (!dir.isEmpty())
+
+    if (dir.isEmpty())
+        return;
+
+    // 检查是否重复添加
+    auto paths = ui->searchPathList->findItems(dir, Qt::MatchExactly);
+    if (!paths.empty())
     {
-        QFileIconProvider icon;
-        QListWidgetItem *item = new QListWidgetItem(icon.icon(QFileIconProvider::Folder), dir);
-        ui->searchPathList->addItem(item);
+        QMessageBox::information(this, "same dir", QString("搜索目录中已经存在 %1").arg(dir), QMessageBox::Ok);
+        return;
     }
+
+    // 检查是否已经添加了子目录
+    paths = ui->searchPathList->findItems(dir, Qt::MatchContains);
+    if (!paths.empty())
+    {
+        // "已经添加了 %1 的子目录，是否将所有子目录移除？"
+        if (QMessageBox::Yes == QMessageBox::question(this, "sub dir", QString("remove all sub dir of %1 ?").arg(dir), QMessageBox::Yes, QMessageBox::No))
+        {
+            for (auto widget = paths.begin(); widget != paths.end(); ++widget)
+            {
+                ui->searchPathList->removeItemWidget(*widget);
+                delete (*widget);
+            }
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    // 检查是否添加了父目录
+#ifdef _DEBUG
+   int parentDirCount = 0;
+#endif
+    for (int i = 0; i < ui->searchPathList->count(); ++i)
+    {
+        auto path = ui->searchPathList->item(i)->text();
+        if (dir.startsWith(path, Qt::CaseInsensitive))
+        {
+#ifdef _DEBUG
+            ++parentDirCount;
+#endif
+            if (QMessageBox::Yes == QMessageBox::question(this, "parent dir", QString("已经添加了 %1 的父目录，是否将所有父目录移除并更换为该目录？").arg(dir), QMessageBox::Yes, QMessageBox::No))
+            {
+                auto widget = ui->searchPathList->takeItem(i);
+                delete widget;
+#ifndef _DEBUG
+                break;
+#endif
+            }
+            else
+            {
+                return;
+            }
+        }
+    }
+#ifdef _DEBUG
+    // 至多应当只存在一个父目录
+    assert(parentDirCount <= 1);
+#endif
+
+//    paths = ui->searchPathList->findItems(dir, Qt::MatchStartsWith);
+//    if (!paths.empty())
+//    {
+//        if (QMessageBox::Yes == QMessageBox::question(this, "parent dir", QString("已经添加了 %1 的父目录，是否将所有父目录移除并更换为该目录？").arg(dir), QMessageBox::Yes, QMessageBox::No))
+//        {
+//            // 应当只存在一个父目录
+//            assert(paths.size() == 1);
+//            ui->searchPathList->removeItemWidget(paths.front());
+//            delete paths.front();
+//        }
+//        else
+//        {
+//            return;
+//        }
+//    }
+
+    QFileIconProvider icon;
+    QListWidgetItem *item = new QListWidgetItem(icon.icon(QFileIconProvider::Folder), dir);
+    ui->searchPathList->addItem(item);
 }
 
 void MainWindow::on_removePath_Btn_clicked()
@@ -352,6 +446,9 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 
     const int halfWidth = event->size().width() / 2;
     const int halfHeight = event->size().height() / 2;
+
+    //ui->leftImageGroupBox->setGeometry(6, 6, halfWidth - 9, halfHeight - 25);
+    //ui->rightImageGroupBox->setGeometry(halfWidth + 3, 6, halfWidth - 9, halfHeight - 25);
 
     ui->leftImg_graphicsView->setGeometry(6, 6, halfWidth - 9, halfHeight - 25);
     ui->rightImg_graphicsView->setGeometry(halfWidth + 3, 6, halfWidth - 9, halfHeight - 25);

@@ -20,7 +20,10 @@ void CustomGraphicsView::mousePressEvent(QMouseEvent *event)
     if (event->button() & Qt::LeftButton)
     {
         auto data = reinterpret_cast<DisplayImage*>(userData(0));
-        auto str = tr("file:") + data->fileName;
-        QDesktopServices::openUrl(str);
+        if (data)
+        {
+            auto str = tr("file:") + data->fileName;
+            QDesktopServices::openUrl(str);
+        }
     }
 }

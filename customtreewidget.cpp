@@ -132,6 +132,30 @@ QList<TreeWidgetFileInfo> CustomTreeWidget::GetCheckedFileName()
     return fileList;
 }
 
+void CustomTreeWidget::CheckAllItem()
+{
+    for (int t = 0; t < topLevelItemCount(); ++t)
+    {
+        auto topItem = topLevelItem(t);
+        for (int i = 0; i < topItem->childCount(); ++i)
+        {
+            topItem->child(i)->setCheckState(0, Qt::Checked);
+        }
+    }
+}
+
+void CustomTreeWidget::UncheckAllItem()
+{
+    for (int t = 0; t < topLevelItemCount(); ++t)
+    {
+        auto topItem = topLevelItem(t);
+        for (int i = 0; i < topItem->childCount(); ++i)
+        {
+            topItem->child(i)->setCheckState(0, Qt::Unchecked);
+        }
+    }
+}
+
 
 //void showMouseRightButton(const QPoint &point)
 //{

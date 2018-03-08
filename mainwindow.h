@@ -49,6 +49,7 @@ public:
 
 protected:
     virtual void resizeEvent(QResizeEvent *event);
+    virtual void closeEvent(QCloseEvent *event);
 
 private:
     void InitMenuBar();
@@ -57,11 +58,15 @@ private:
 public slots:
     void OnPictureProcessFinish();
     void OnTableItemClicked(bool left, QTreeWidgetItem* item, int colume);
-    void MenuAct_Save();
+    void MenuAct_Exit();
     void MenuAct_About();
     void MenuAct_StopSearch();
     void MenuAct_Option();
     void MenuAct_DeleteCheckedFile();
+    void MenuAct_CheckAll();
+    void MenuAct_UncheckAll();
+    void MenuAct_ResetCheck();
+    void MenuAct_RemoveSelectRecord();
 
 private slots:
     void on_addPath_Btn_clicked();
@@ -81,9 +86,11 @@ class QPicThread : public QThread
     Q_OBJECT
 
 public:
-    QPicThread(const QStringList & path, MainWindow *mainWnd);
+    QPicThread(MainWindow *mainWnd);
 
     virtual void run();
+
+    void SetPath(const QStringList & path);
 
 signals:
     void PictureProcessFinish();

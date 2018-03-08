@@ -50,6 +50,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    ui->leftImg_graphicsView->setUserData(0, nullptr);
+    ui->rightImg_graphicsView->setUserData(0, nullptr);
     delete ui;
     if (procThread) delete procThread;
 }
@@ -144,9 +146,9 @@ void MainWindow::OnTableItemClicked(bool left, QTreeWidgetItem* item, int colume
     }
 }
 
-void MainWindow::MenuAct_Save()
+void MainWindow::MenuAct_Exit()
 {
-    QMessageBox::about(this, "title", "save.");
+    close();
 }
 
 void MainWindow::MenuAct_About()
@@ -202,26 +204,74 @@ void MainWindow::MenuAct_DeleteCheckedFile()
     }
 }
 
+void MainWindow::MenuAct_CheckAll()
+{
+    ui->searchResult_treeWidget->CheckAllItem();
+}
+
+void MainWindow::MenuAct_UncheckAll()
+{
+    ui->searchResult_treeWidget->UncheckAllItem();
+}
+
+void MainWindow::MenuAct_ResetCheck()
+{
+    auto topItemCount = ui->searchResult_treeWidget->topLevelItemCount();
+    for (int i = 0; i < topItemCount; ++i)
+    {
+        auto topItem = ui->searchResult_treeWidget->topLevelItem(i);
+        Q_ASSERT(topItem->childCount() >= 2);
+        topItem->child(0)->setCheckState(0, Qt::Unchecked);
+        for (int k = 1; k < topItem->childCount(); ++k)
+        {
+            topItem->child(k)->setCheckState(0, Qt::Checked);
+        }
+    }
+}
+
+void MainWindow::MenuAct_RemoveSelectRecord()
+{
+    auto items = ui->searchResult_treeWidget->selectedItems();
+    for (auto item : items)
+    {
+        ui->searchResult_treeWidget->removeItemWidget(item, 0);
+        delete item;
+    }
+    return;
+
+    auto topLevelItemCount = ui->searchResult_treeWidget->topLevelItemCount();
+    for (int i = topLevelItemCount - 1; i >= 0; --i)
+    {
+        auto topItem = ui->searchResult_treeWidget->topLevelItem(i);
+        if (topItem->isSelected())
+        {
+            delete ui->searchResult_treeWidget->takeTopLevelItem(i);
+        }
+        else
+        {
+            auto childCount = topItem->childCount();
+            for (int k = childCount - 1; k >= 0; --k)
+            {
+                if (topItem->child(k)->isSelected())
+                {
+                    delete topItem->takeChild(k);
+                }
+            }
+        }
+    }
+}
+
 void MainWindow::InitMenuBar()
 {
     QMenuBar *menu_bar = menuBar();
 
     // 文件菜单
     QMenu *menuFile = new QMenu("文件(&F)", this);
-    QAction *action_open = new QAction("打开(&O)", this);
-    action_open->setShortcut(QKeySequence(Qt::Key_O));
-
-    QAction *action_new = new QAction("新建(&N)", this);
-    action_new->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_N));
-
-    QAction *action_save = new QAction("保存(&S)", this);
-    action_save->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
-    auto b = connect(action_save, SIGNAL(triggered()), this, SLOT(MenuAct_Save()));
+    QAction *action_Exit = new QAction("退出(&X)", this);
+    auto b = connect(action_Exit, SIGNAL(triggered()), this, SLOT(MenuAct_Exit()));
     Q_ASSERT(b);
 
-    menuFile->addAction(action_new);
-    menuFile->addAction(action_open);
-    menuFile->addAction(action_save);
+    menuFile->addAction(action_Exit);
 
     menu_bar->addMenu(menuFile);
 
@@ -231,6 +281,25 @@ void MainWindow::InitMenuBar()
     QAction *action_deleteCheckedFile = new QAction("删除勾选文件(&D)", this);
     b = connect(action_deleteCheckedFile, SIGNAL(triggered()), this, SLOT(MenuAct_DeleteCheckedFile()));
     Q_ASSERT(b);
+    QAction *action_checkAll = new QAction("全部勾选(&A)", this);
+    b = connect(action_checkAll, SIGNAL(triggered()), this, SLOT(MenuAct_CheckAll()));
+    Q_ASSERT(b);
+    QAction *action_UncheckAll = new QAction("全不勾选(&U)", this);
+    b = connect(action_UncheckAll, SIGNAL(triggered()), this, SLOT(MenuAct_UncheckAll()));
+    Q_ASSERT(b);
+    QAction *action_ResetCheck = new QAction("默认勾选(&R)", this);
+    b = connect(action_ResetCheck, SIGNAL(triggered()), this, SLOT(MenuAct_ResetCheck()));
+    Q_ASSERT(b);
+    QAction *action_RemoveSelectRecord = new QAction("从结果中移除选中的记录(&S)", this);
+    b = connect(action_RemoveSelectRecord, SIGNAL(triggered()), this, SLOT(MenuAct_RemoveSelectRecord()));
+    Q_ASSERT(b);
+
+    menuAction->addAction(action_checkAll);
+    menuAction->addAction(action_UncheckAll);
+    menuAction->addAction(action_ResetCheck);
+    menuAction->addSeparator();
+    menuAction->addAction(action_RemoveSelectRecord);
+    menuAction->addSeparator();
     menuAction->addAction(action_deleteCheckedFile);
 
     menu_bar->addMenu(menuAction);
@@ -280,31 +349,31 @@ void MainWindow::InitStatusBar()
 
 void MainWindow::on_startSearchBtn_clicked()
 {
-    QStringList text;
-    for (int i = 0; i < ui->searchPathList->count(); ++i)
-    {
-        text.push_back(ui->searchPathList->item(i)->text());
-    }
-
-    if (procThread)
-    {
-        QMessageBox::about(this, "title", "wait prve...");
-        procThread->wait();
-        delete procThread;
-        procThread = nullptr;
-    }
-
     if (!procThread)
     {
-        procThread = new QPicThread(text, this);
+        procThread = new QPicThread(this);
+    }
+
+    if (procThread->isRunning())
+    {
+        QMessageBox::about(this, "title", "wait prve...");
+    }
+    else
+    {
+        QStringList text;
+        for (int i = 0; i < ui->searchPathList->count(); ++i)
+        {
+            text.push_back(ui->searchPathList->item(i)->text());
+        }
+
+        procThread->SetPath(text);
         procThread->start();
     }
 }
 
-QPicThread::QPicThread(const QStringList &path, MainWindow *mainWnd)
+QPicThread::QPicThread(MainWindow *mainWnd)
 {
     MainWnd = mainWnd;
-    Path = path;
 
     connect(this, SIGNAL(PictureProcessFinish()), MainWnd, SLOT(OnPictureProcessFinish()));
 }
@@ -374,6 +443,11 @@ void QPicThread::run()
     emit PictureProcessFinish();
 
     exit();
+}
+
+void QPicThread::SetPath(const QStringList &path)
+{
+    Path = path;
 }
 
 void MainWindow::on_addPath_Btn_clicked()
@@ -488,4 +562,9 @@ void MainWindow::resizeEvent(QResizeEvent* event)
     // 缩放图像
     RefreshGraphicImage(ui->leftImageName_Label->text(), &imageLeft, ui->leftImg_graphicsView, ui->leftImageName_Label, false);
     RefreshGraphicImage(ui->rightImageName_Label->text(), &imageRight, ui->rightImg_graphicsView, ui->rightImageName_Label, false);
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    QMainWindow::closeEvent(event);
 }

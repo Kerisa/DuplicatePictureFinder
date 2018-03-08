@@ -29,6 +29,9 @@ public:
     void updateParentItem(QTreeWidgetItem* item);
     QList<TreeWidgetFileInfo> GetCheckedFileName();
 
+    void CheckAllItem();
+    void UncheckAllItem();
+
 protected:
     void mouseReleaseEvent(QMouseEvent *event) Q_DECL_OVERRIDE;
 

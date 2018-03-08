@@ -1,14 +1,13 @@
 
 #include "customtreewidget.h"
 #include <qevent.h>
-#include <cassert>
 
 
 CustomTreeWidget::CustomTreeWidget(QWidget *parent)
     : QTreeWidget(parent)
 {
     auto b = connect(this, SIGNAL(itemChanged(QTreeWidgetItem*,int)), this, SLOT(treeItemChanged(QTreeWidgetItem*,int)));
-    assert(b);
+    Q_ASSERT(b);
 }
 
 void CustomTreeWidget::InitTreeView()
@@ -111,6 +110,26 @@ void CustomTreeWidget::updateParentItem(QTreeWidgetItem* item)
     {
         parent->setCheckState(0,Qt::Checked);
     }
+}
+
+QList<TreeWidgetFileInfo> CustomTreeWidget::GetCheckedFileName()
+{
+    QList<TreeWidgetFileInfo> fileList;
+
+    for (int t = 0; t < topLevelItemCount(); ++t)
+    {
+        auto topItem = topLevelItem(t);
+        for (int i = 0; i < topItem->childCount(); ++i)
+        {
+            QTreeWidgetItem* childItem = topItem->child(i);
+            if (childItem->checkState(0) == Qt::Checked)
+            {
+                fileList.push_back(TreeWidgetFileInfo(t, childItem, childItem->text(0)));
+            }
+        }
+    }
+
+    return fileList;
 }
 
 

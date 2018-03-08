@@ -3,7 +3,6 @@
 #include "qlabel.h"
 #include "qmessagebox.h"
 
-#include <cassert>
 #include <vector>
 #include <string>
 #include "featurevector.h"
@@ -15,6 +14,9 @@
 #include <QFileDialog>
 #include <QFileIconProvider>
 #include <QResizeEvent>
+
+#include "movetorecyclebin.h"
+
 
 DisplayImage::DisplayImage()
     : image(new QImage), scene(new QGraphicsScene)
@@ -35,9 +37,9 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     auto b = connect(ui->searchResult_treeWidget, SIGNAL(ClickItem(bool, QTreeWidgetItem*, int)), this, SLOT(OnTableItemClicked(bool, QTreeWidgetItem*, int)));
-    assert(b);
+    Q_ASSERT(b);
     //b = connect(ui->treeWidget, SIGNAL(customContextMenuRequested(const QPoint)), this, SLOT(showMouseRightButton(const QPoint)));
-    assert(b);
+    Q_ASSERT(b);
 
     InitMenuBar();
     InitStatusBar();
@@ -105,7 +107,7 @@ void MainWindow::OnPictureProcessFinish()
         ui->searchResult_treeWidget->addTopLevelItem(top);
         top->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         top->setCheckState(0, Qt::PartiallyChecked);
-        assert(pictureGroup[i].size() > 1);
+        Q_ASSERT(pictureGroup[i].size() > 1);
         for (size_t f = 0; f < pictureGroup[i].size(); ++f)
         {
             content.clear();
@@ -128,7 +130,7 @@ void MainWindow::OnPictureProcessFinish()
 
 void MainWindow::OnTableItemClicked(bool left, QTreeWidgetItem* item, int colume)
 {
-    assert(item);
+    Q_ASSERT(item);
     colume;
 
     auto filename = item->text(0);
@@ -165,10 +167,39 @@ void MainWindow::MenuAct_Option()
 void MainWindow::MenuAct_DeleteCheckedFile()
 {
     // "确认将所有勾选的文件移除到回收站中？"
-    if (QMessageBox::No == QMessageBox::question(this, "cofirm delete", "delete checked files to recycle ?", QMesssageBox::Yes, QMessageBox::No))
+    if (QMessageBox::No == QMessageBox::question(this, "cofirm delete", "delete checked files to recycle ?", QMessageBox::Yes, QMessageBox::No))
         return;
 
+    QStringList cannotDeleteFile;
+    auto deleteFile = ui->searchResult_treeWidget->GetCheckedFileName();
+    for (auto & f : deleteFile)
+    {
+        if (MoveToRecycleBin::execute(f.fileName))
+        {
+            ui->searchResult_treeWidget->topLevelItem(f.topLevelIndex)->removeChild(f.childItem);
+            delete f.childItem;
+        }
+        else
+        {
+            cannotDeleteFile.push_back(f.fileName);
+        }
+    }
 
+    if (!cannotDeleteFile.empty())
+    {
+        QString msg("cannot delete listed file:");
+        for (auto & f : cannotDeleteFile)
+        {
+            msg += '\n';
+            msg += f;
+        }
+        msg += "\nplease delete manually.";
+        QMessageBox::warning(this, "cannot del file", msg, QMessageBox::Ok);
+    }
+    else
+    {
+        QMessageBox::information(this, "delete finish", QString("successful delete %1 file(s)").arg(deleteFile.size()), QMessageBox::Ok);
+    }
 }
 
 void MainWindow::InitMenuBar()
@@ -186,7 +217,7 @@ void MainWindow::InitMenuBar()
     QAction *action_save = new QAction("保存(&S)", this);
     action_save->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
     auto b = connect(action_save, SIGNAL(triggered()), this, SLOT(MenuAct_Save()));
-    assert(b);
+    Q_ASSERT(b);
 
     menuFile->addAction(action_new);
     menuFile->addAction(action_open);
@@ -199,7 +230,7 @@ void MainWindow::InitMenuBar()
     QMenu *menuAction = new QMenu("操作(&U)", this);
     QAction *action_deleteCheckedFile = new QAction("删除勾选文件(&D)", this);
     b = connect(action_deleteCheckedFile, SIGNAL(triggered()), this, SLOT(MenuAct_DeleteCheckedFile()));
-    assert(b);
+    Q_ASSERT(b);
     menuAction->addAction(action_deleteCheckedFile);
 
     menu_bar->addMenu(menuAction);
@@ -209,13 +240,13 @@ void MainWindow::InitMenuBar()
     QMenu *menuSearch = new QMenu("搜索(&S)", this);
     QAction *action_startSearch = new QAction("开始(&S)", this);
     b = connect(action_startSearch, SIGNAL(triggered()), this, SLOT(on_startSearchBtn_clicked()));
-    assert(b);
+    Q_ASSERT(b);
     QAction *action_stopSearch = new QAction("停止(&T)", this);
     b = connect(action_stopSearch, SIGNAL(triggered()), this, SLOT(MenuAct_StopSearch()));
-    assert(b);
+    Q_ASSERT(b);
     QAction *action_option = new QAction("选项(&O)", this);
     b = connect(action_option, SIGNAL(triggered()), this, SLOT(MenuAct_Option()));
-    assert(b);
+    Q_ASSERT(b);
     menuSearch->addAction(action_startSearch);
     menuSearch->addAction(action_stopSearch);
     menuSearch->addSeparator();
@@ -228,7 +259,7 @@ void MainWindow::InitMenuBar()
     QMenu *menuHelp = new QMenu("帮助(&H)", this);
     QAction *action_about = new QAction("关于(&A)", this);
     b = connect(action_about, SIGNAL(triggered()), this, SLOT(MenuAct_About()));
-    assert(b);
+    Q_ASSERT(b);
     menuHelp->addAction(action_about);
 
     menu_bar->addMenu(menuHelp);
@@ -302,7 +333,7 @@ void QPicThread::run()
         Alisa::Image image;
         if (!image.Open(out[i]))
         {
-            assert(0);
+            Q_ASSERT(0);
             continue;
         }
 
@@ -341,6 +372,8 @@ void QPicThread::run()
     MainWnd->SetGroupResult(groups);
 
     emit PictureProcessFinish();
+
+    exit();
 }
 
 void MainWindow::on_addPath_Btn_clicked()
@@ -410,24 +443,8 @@ void MainWindow::on_addPath_Btn_clicked()
     }
 #ifdef _DEBUG
     // 至多应当只存在一个父目录
-    assert(parentDirCount <= 1);
+    Q_ASSERT(parentDirCount <= 1);
 #endif
-
-//    paths = ui->searchPathList->findItems(dir, Qt::MatchStartsWith);
-//    if (!paths.empty())
-//    {
-//        if (QMessageBox::Yes == QMessageBox::question(this, "parent dir", QString("已经添加了 %1 的父目录，是否将所有父目录移除并更换为该目录？").arg(dir), QMessageBox::Yes, QMessageBox::No))
-//        {
-//            // 应当只存在一个父目录
-//            assert(paths.size() == 1);
-//            ui->searchPathList->removeItemWidget(paths.front());
-//            delete paths.front();
-//        }
-//        else
-//        {
-//            return;
-//        }
-//    }
 
     QFileIconProvider icon;
     QListWidgetItem *item = new QListWidgetItem(icon.icon(QFileIconProvider::Folder), dir);

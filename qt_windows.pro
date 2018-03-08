@@ -33,7 +33,8 @@ SOURCES += \
     featurevector.cpp \
     OpenFiles.cpp \
     picture.cpp \
-    customgraphicsview.cpp
+    customgraphicsview.cpp \
+    movetorecyclebin.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -44,7 +45,8 @@ HEADERS += \
     types.h \
     Utility.h \
     customtreewidget.h \
-    customgraphicsview.h
+    customgraphicsview.h \
+    movetorecyclebin.h
 
 FORMS += \
         mainwindow.ui

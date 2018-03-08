@@ -4,6 +4,20 @@
 #include <qtwidgets/qtreewidget.h>
 
 
+struct TreeWidgetFileInfo
+{
+    TreeWidgetFileInfo(int topIdx, QTreeWidgetItem *child, const QString & file)
+        : childItem(child), topLevelIndex(topIdx), fileName(file) { }
+
+
+    QString fileName;
+
+    // 只有两层结构
+    int topLevelIndex;
+    QTreeWidgetItem *childItem;
+};
+
+
 class CustomTreeWidget : public QTreeWidget
 {
     Q_OBJECT
@@ -13,6 +27,7 @@ public:
     void InitTreeView();
     void AdjustColumeWidth();
     void updateParentItem(QTreeWidgetItem* item);
+    QList<TreeWidgetFileInfo> GetCheckedFileName();
 
 protected:
     void mouseReleaseEvent(QMouseEvent *event) Q_DECL_OVERRIDE;

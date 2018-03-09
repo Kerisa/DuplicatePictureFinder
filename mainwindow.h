@@ -1,4 +1,4 @@
-#ifndef MAINWINDOW_H
+﻿#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
 #include <QMainWindow>
@@ -53,6 +53,7 @@ protected:
 private:
     void InitMenuBar();
     void InitStatusBar();
+    QString GetSizeString(qint64 size);
 
 public slots:
     void OnPictureProcessFinish();

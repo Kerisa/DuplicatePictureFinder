@@ -97,6 +97,22 @@ void MainWindow::RefreshGraphicImage(const QString &filename, DisplayImage *img,
     }
 }
 
+QString MainWindow::GetSizeString(qint64 size)
+{
+    if (size >= 1e6)
+    {
+        return QString::number(static_cast<double>(size) / 1024 / 1024, 'f', 2) + " MB";
+    }
+    else if (size >= 1e3)
+    {
+        return QString::number(static_cast<double>(size) / 1024, 'f', 2) + " KB";
+    }
+    else
+    {
+        return QString::number(size) + " B";
+    }
+}
+
 void MainWindow::OnPictureProcessFinish()
 {
     ui->searchResult_treeWidget->clear();
@@ -113,7 +129,7 @@ void MainWindow::OnPictureProcessFinish()
         {
             content.clear();
             content.push_back(pictureGroup[i][f].fileName);
-            content.push_back(QString::number(pictureGroup[i][f].fileInfo.size()) + "bytes");
+            content.push_back(GetSizeString(pictureGroup[i][f].fileInfo.size()));
             content.push_back(QString::number(pictureGroup[i][f].width) + "x" + QString::number((pictureGroup[i][0].height)));
             content.push_back(pictureGroup[i][f].fileInfo.lastModified().toString("yyyy/MM/dd/ hh:mm:ss"));
 

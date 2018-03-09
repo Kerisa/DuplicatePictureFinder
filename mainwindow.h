@@ -1,7 +1,6 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QThread>
 #include <QMainWindow>
 #include <QFileInfo>
 
@@ -79,25 +78,6 @@ private:
     QPicThread *procThread;
 
     std::vector<std::vector<TreeViewImageInfo>> pictureGroup;
-};
-
-class QPicThread : public QThread
-{
-    Q_OBJECT
-
-public:
-    QPicThread(MainWindow *mainWnd);
-
-    virtual void run();
-
-    void SetPath(const QStringList & path);
-
-signals:
-    void PictureProcessFinish();
-
-private:
-    QStringList Path;
-    MainWindow *MainWnd;
 };
 
 #endif // MAINWINDOW_H

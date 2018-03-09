@@ -34,7 +34,8 @@ SOURCES += \
     OpenFiles.cpp \
     picture.cpp \
     customgraphicsview.cpp \
-    movetorecyclebin.cpp
+    movetorecyclebin.cpp \
+    qpicthread.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -46,7 +47,8 @@ HEADERS += \
     Utility.h \
     customtreewidget.h \
     customgraphicsview.h \
-    movetorecyclebin.h
+    movetorecyclebin.h \
+    qpicthread.h
 
 FORMS += \
         mainwindow.ui

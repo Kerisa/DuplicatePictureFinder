@@ -11,7 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Duplicate Picture Finder 1.0</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="resource.qrc">
+    <normaloff>:/new/ico/res/Search.ico</normaloff>:/new/ico/res/Search.ico</iconset>
   </property>
   <widget class="QWidget" name="centralWidget">
    <widget class="QPushButton" name="startSearchBtn">
@@ -25,6 +29,10 @@
     </property>
     <property name="text">
      <string>开始(&amp;S)</string>
+    </property>
+    <property name="icon">
+     <iconset resource="resource.qrc">
+      <normaloff>:/new/ico/res/Play.ico</normaloff>:/new/ico/res/Play.ico</iconset>
     </property>
    </widget>
    <widget class="CustomGraphicsView" name="leftImg_graphicsView">
@@ -151,7 +159,11 @@
      </rect>
     </property>
     <property name="text">
-     <string>+</string>
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset resource="resource.qrc">
+      <normaloff>:/new/ico/res/Add folder.ico</normaloff>:/new/ico/res/Add folder.ico</iconset>
     </property>
    </widget>
    <widget class="QPushButton" name="removePath_Btn">
@@ -164,7 +176,11 @@
      </rect>
     </property>
     <property name="text">
-     <string>-</string>
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset resource="resource.qrc">
+      <normaloff>:/new/ico/res/Close folder.ico</normaloff>:/new/ico/res/Close folder.ico</iconset>
     </property>
    </widget>
   </widget>
@@ -212,6 +228,8 @@
    <header>customgraphicsview.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="resource.qrc"/>
+ </resources>
  <connections/>
 </ui>

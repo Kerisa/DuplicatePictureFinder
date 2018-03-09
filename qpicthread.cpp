@@ -7,6 +7,7 @@
 
 QPicThread::QPicThread(MainWindow *mainWnd)
 {
+    continueRun = true;
     MainWnd = mainWnd;
 
     connect(this, SIGNAL(PictureProcessFinish()), MainWnd, SLOT(OnPictureProcessFinish()));
@@ -14,6 +15,8 @@ QPicThread::QPicThread(MainWindow *mainWnd)
 
 void QPicThread::run()
 {
+    continueRun = true;
+
     std::vector<std::wstring> path, out;
     for (auto & qs : Path)
         path.push_back(qs.toStdWString());
@@ -25,7 +28,7 @@ void QPicThread::run()
     Alisa::ImageFeatureVector fv;
     fv.Initialize();
 
-    for (size_t i = 0; i < out.size(); ++i)
+    for (size_t i = 0; i < out.size() && continueRun; ++i)
     {
         QString extension = QString::fromStdWString(out[i].substr(out[i].find_last_of('.') + 1));
         if (extension.compare("png", Qt::CaseInsensitive) &&
@@ -44,7 +47,19 @@ void QPicThread::run()
         fv.AddPicture(out[i].c_str(), image);
     }
 
+    if (!continueRun)
+    {
+        exit();
+        return;
+    }
+
     fv.DivideGroup();
+
+    if (!continueRun)
+    {
+        exit();
+        return;
+    }
 
     std::vector<std::vector<TreeViewImageInfo>> groups;
     auto _result = fv.GetGroupResult();
@@ -82,4 +97,13 @@ void QPicThread::run()
 void QPicThread::SetPath(const QStringList &path)
 {
     Path = path;
+}
+
+bool QPicThread::Abort()
+{
+    if (!isRunning())
+        return true;
+
+    continueRun = false;
+    return wait(3000);
 }

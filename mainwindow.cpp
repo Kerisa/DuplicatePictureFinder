@@ -151,12 +151,24 @@ void MainWindow::MenuAct_Exit()
 
 void MainWindow::MenuAct_About()
 {
-    QMessageBox::about(this, "title", "about.");
+    QString str;
+    str = "Duplicate File Finder V1.0";
+    QMessageBox::about(this, "关于 Duplicate File Finder", str);
 }
 
 void MainWindow::MenuAct_StopSearch()
 {
-    QMessageBox::about(this, "title", "StopSearch.");
+    if (procThread->isRunning())
+    {
+        if (procThread->Abort())
+        {
+            QMessageBox::information(this, "abort", "abort success", QMessageBox::Ok);
+        }
+        else
+        {
+            QMessageBox::information(this, "abort", "cannot abort now, please wait...", QMessageBox::Ok);
+        }
+    }
 }
 
 void MainWindow::MenuAct_Option()
@@ -266,6 +278,7 @@ void MainWindow::InitMenuBar()
     // 文件菜单
     QMenu *menuFile = new QMenu("文件(&F)", this);
     QAction *action_Exit = new QAction("退出(&X)", this);
+    action_Exit->setIcon(QIcon(":/new/ico/res/Exit.ico"));
     auto b = connect(action_Exit, SIGNAL(triggered()), this, SLOT(MenuAct_Exit()));
     Q_ASSERT(b);
 
@@ -277,6 +290,7 @@ void MainWindow::InitMenuBar()
     // 操作菜单
     QMenu *menuAction = new QMenu("操作(&U)", this);
     QAction *action_deleteCheckedFile = new QAction("删除勾选文件(&D)", this);
+    action_deleteCheckedFile->setIcon(QIcon(":/new/ico/res/Erase.ico"));
     b = connect(action_deleteCheckedFile, SIGNAL(triggered()), this, SLOT(MenuAct_DeleteCheckedFile()));
     Q_ASSERT(b);
     QAction *action_checkAll = new QAction("全部勾选(&A)", this);
@@ -286,9 +300,11 @@ void MainWindow::InitMenuBar()
     b = connect(action_UncheckAll, SIGNAL(triggered()), this, SLOT(MenuAct_UncheckAll()));
     Q_ASSERT(b);
     QAction *action_ResetCheck = new QAction("默认勾选(&R)", this);
+    action_ResetCheck->setIcon(QIcon(":/new/ico/res/Undo.ico"));
     b = connect(action_ResetCheck, SIGNAL(triggered()), this, SLOT(MenuAct_ResetCheck()));
     Q_ASSERT(b);
     QAction *action_RemoveSelectRecord = new QAction("从结果中移除选中的记录(&S)", this);
+    action_RemoveSelectRecord->setIcon(QIcon(":/new/ico/res/Eraser.ico"));
     b = connect(action_RemoveSelectRecord, SIGNAL(triggered()), this, SLOT(MenuAct_RemoveSelectRecord()));
     Q_ASSERT(b);
 
@@ -306,12 +322,15 @@ void MainWindow::InitMenuBar()
     // 搜索菜单
     QMenu *menuSearch = new QMenu("搜索(&S)", this);
     QAction *action_startSearch = new QAction("开始(&S)", this);
+    action_startSearch->setIcon(QIcon(":/new/ico/res/Play.ico"));
     b = connect(action_startSearch, SIGNAL(triggered()), this, SLOT(on_startSearchBtn_clicked()));
     Q_ASSERT(b);
     QAction *action_stopSearch = new QAction("停止(&T)", this);
+    action_stopSearch->setIcon(QIcon(":/new/ico/res/Stop playing.ico"));
     b = connect(action_stopSearch, SIGNAL(triggered()), this, SLOT(MenuAct_StopSearch()));
     Q_ASSERT(b);
     QAction *action_option = new QAction("选项(&O)", this);
+    action_option->setIcon(QIcon(":/new/ico/res/Pinion.ico"));
     b = connect(action_option, SIGNAL(triggered()), this, SLOT(MenuAct_Option()));
     Q_ASSERT(b);
     menuSearch->addAction(action_startSearch);

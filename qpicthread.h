@@ -17,6 +17,7 @@ public:
     virtual void run();
 
     void SetPath(const QStringList & path);
+    bool Abort();
 
 signals:
     void PictureProcessFinish();
@@ -24,6 +25,7 @@ signals:
 private:
     QStringList Path;
     MainWindow *MainWnd;
+    bool continueRun;
 };
 
 

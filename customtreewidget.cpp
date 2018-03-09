@@ -1,7 +1,6 @@
-
+﻿
 #include "customtreewidget.h"
 #include <qevent.h>
-
 
 CustomTreeWidget::CustomTreeWidget(QWidget *parent)
     : QTreeWidget(parent)
@@ -15,10 +14,10 @@ void CustomTreeWidget::InitTreeView()
     setColumnCount(4);
 
     QStringList list;
-    list.push_back("Filename");
-    list.push_back("Size");
-    list.push_back("Solution");
-    list.push_back("ModifyTime");
+    list.push_back(QString::fromWCharArray(L"文件名"));
+    list.push_back(QString::fromWCharArray(L"大小"));
+    list.push_back(QString::fromWCharArray(L"分辨率"));
+    list.push_back(QString::fromWCharArray(L"修改时间"));
     setHeaderLabels(list);
 
     AdjustColumeWidth();

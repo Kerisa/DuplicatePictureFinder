@@ -1,4 +1,4 @@
-
+﻿
 #include <qlabel>
 #include <qmessagebox>
 #include <QDateTime>
@@ -14,6 +14,7 @@
 #include "movetorecyclebin.h"
 #include "qpicthread.h"
 
+#define _U(str) QString::fromWCharArray(L##str)
 
 
 DisplayImage::DisplayImage()
@@ -125,7 +126,7 @@ void MainWindow::OnPictureProcessFinish()
         }
     }
     ui->searchResult_treeWidget->expandAll();
-    QMessageBox::about(this, "title", "process finished!");
+    QMessageBox::information(this, _U("完成"), _U("处理结束!"));
 }
 
 void MainWindow::OnTableItemClicked(bool left, QTreeWidgetItem* item, int colume)
@@ -153,7 +154,7 @@ void MainWindow::MenuAct_About()
 {
     QString str;
     str = "Duplicate File Finder V1.0";
-    QMessageBox::about(this, "关于 Duplicate File Finder", str);
+    QMessageBox::about(this, _U("关于 Duplicate File Finder"), str);
 }
 
 void MainWindow::MenuAct_StopSearch()
@@ -162,11 +163,11 @@ void MainWindow::MenuAct_StopSearch()
     {
         if (procThread->Abort())
         {
-            QMessageBox::information(this, "abort", "abort success", QMessageBox::Ok);
+            QMessageBox::information(this, _U("处理中止"), _U("处理已被中止"), QMessageBox::Ok);
         }
         else
         {
-            QMessageBox::information(this, "abort", "cannot abort now, please wait...", QMessageBox::Ok);
+            QMessageBox::information(this, _U("处理中止"), _U("现在无法中断处理，请稍候"), QMessageBox::Ok);
         }
     }
 }
@@ -178,8 +179,7 @@ void MainWindow::MenuAct_Option()
 
 void MainWindow::MenuAct_DeleteCheckedFile()
 {
-    // "确认将所有勾选的文件移除到回收站中？"
-    if (QMessageBox::No == QMessageBox::question(this, "cofirm delete", "delete checked files to recycle ?", QMessageBox::Yes, QMessageBox::No))
+    if (QMessageBox::No == QMessageBox::question(this, _U("删除文件"), _U("确认要将所有勾选的文件移入回收站吗？"), QMessageBox::Yes, QMessageBox::No))
         return;
 
     QStringList cannotDeleteFile;
@@ -199,18 +199,18 @@ void MainWindow::MenuAct_DeleteCheckedFile()
 
     if (!cannotDeleteFile.empty())
     {
-        QString msg("cannot delete listed file:");
+        QString msg(_U("以下文件无法删除："));
         for (auto & f : cannotDeleteFile)
         {
             msg += '\n';
             msg += f;
         }
-        msg += "\nplease delete manually.";
-        QMessageBox::warning(this, "cannot del file", msg, QMessageBox::Ok);
+        msg += _U("\n请手动进行删除");
+        QMessageBox::warning(this, _U("部分文件无法删除"), msg, QMessageBox::Ok);
     }
     else
     {
-        QMessageBox::information(this, "delete finish", QString("successful delete %1 file(s)").arg(deleteFile.size()), QMessageBox::Ok);
+        QMessageBox::information(this, _U("删除完成"), QString(_U("成功删除 %1 个文件")).arg(deleteFile.size()), QMessageBox::Ok);
     }
 }
 
@@ -276,8 +276,8 @@ void MainWindow::InitMenuBar()
     QMenuBar *menu_bar = menuBar();
 
     // 文件菜单
-    QMenu *menuFile = new QMenu("文件(&F)", this);
-    QAction *action_Exit = new QAction("退出(&X)", this);
+    QMenu *menuFile = new QMenu(_U("文件(&F)"), this);
+    QAction *action_Exit = new QAction(_U("退出(&X)"), this);
     action_Exit->setIcon(QIcon(":/new/ico/res/Exit.ico"));
     auto b = connect(action_Exit, SIGNAL(triggered()), this, SLOT(MenuAct_Exit()));
     Q_ASSERT(b);
@@ -288,22 +288,22 @@ void MainWindow::InitMenuBar()
 
 
     // 操作菜单
-    QMenu *menuAction = new QMenu("操作(&U)", this);
-    QAction *action_deleteCheckedFile = new QAction("删除勾选文件(&D)", this);
+    QMenu *menuAction = new QMenu(_U("操作(&U)"), this);
+    QAction *action_deleteCheckedFile = new QAction(_U("删除勾选文件(&D)"), this);
     action_deleteCheckedFile->setIcon(QIcon(":/new/ico/res/Erase.ico"));
     b = connect(action_deleteCheckedFile, SIGNAL(triggered()), this, SLOT(MenuAct_DeleteCheckedFile()));
     Q_ASSERT(b);
-    QAction *action_checkAll = new QAction("全部勾选(&A)", this);
+    QAction *action_checkAll = new QAction(_U("全部勾选(&A)"), this);
     b = connect(action_checkAll, SIGNAL(triggered()), this, SLOT(MenuAct_CheckAll()));
     Q_ASSERT(b);
-    QAction *action_UncheckAll = new QAction("全不勾选(&U)", this);
+    QAction *action_UncheckAll = new QAction(_U("全不勾选(&U)"), this);
     b = connect(action_UncheckAll, SIGNAL(triggered()), this, SLOT(MenuAct_UncheckAll()));
     Q_ASSERT(b);
-    QAction *action_ResetCheck = new QAction("默认勾选(&R)", this);
+    QAction *action_ResetCheck = new QAction(_U("默认勾选(&R)"), this);
     action_ResetCheck->setIcon(QIcon(":/new/ico/res/Undo.ico"));
     b = connect(action_ResetCheck, SIGNAL(triggered()), this, SLOT(MenuAct_ResetCheck()));
     Q_ASSERT(b);
-    QAction *action_RemoveSelectRecord = new QAction("从结果中移除选中的记录(&S)", this);
+    QAction *action_RemoveSelectRecord = new QAction(_U("从结果中移除选中的记录(&S)"), this);
     action_RemoveSelectRecord->setIcon(QIcon(":/new/ico/res/Eraser.ico"));
     b = connect(action_RemoveSelectRecord, SIGNAL(triggered()), this, SLOT(MenuAct_RemoveSelectRecord()));
     Q_ASSERT(b);
@@ -320,16 +320,16 @@ void MainWindow::InitMenuBar()
 
 
     // 搜索菜单
-    QMenu *menuSearch = new QMenu("搜索(&S)", this);
-    QAction *action_startSearch = new QAction("开始(&S)", this);
+    QMenu *menuSearch = new QMenu(_U("搜索(&S)"), this);
+    QAction *action_startSearch = new QAction(_U("开始(&S)"), this);
     action_startSearch->setIcon(QIcon(":/new/ico/res/Play.ico"));
     b = connect(action_startSearch, SIGNAL(triggered()), this, SLOT(on_startSearchBtn_clicked()));
     Q_ASSERT(b);
-    QAction *action_stopSearch = new QAction("停止(&T)", this);
+    QAction *action_stopSearch = new QAction(_U("停止(&T)"), this);
     action_stopSearch->setIcon(QIcon(":/new/ico/res/Stop playing.ico"));
     b = connect(action_stopSearch, SIGNAL(triggered()), this, SLOT(MenuAct_StopSearch()));
     Q_ASSERT(b);
-    QAction *action_option = new QAction("选项(&O)", this);
+    QAction *action_option = new QAction(_U("选项(&O)"), this);
     action_option->setIcon(QIcon(":/new/ico/res/Pinion.ico"));
     b = connect(action_option, SIGNAL(triggered()), this, SLOT(MenuAct_Option()));
     Q_ASSERT(b);
@@ -342,8 +342,8 @@ void MainWindow::InitMenuBar()
 
 
     // 帮助菜单
-    QMenu *menuHelp = new QMenu("帮助(&H)", this);
-    QAction *action_about = new QAction("关于(&A)", this);
+    QMenu *menuHelp = new QMenu(_U("帮助(&H)"), this);
+    QAction *action_about = new QAction(_U("关于(&A)"), this);
     b = connect(action_about, SIGNAL(triggered()), this, SLOT(MenuAct_About()));
     Q_ASSERT(b);
     menuHelp->addAction(action_about);
@@ -373,7 +373,7 @@ void MainWindow::on_startSearchBtn_clicked()
 
     if (procThread->isRunning())
     {
-        QMessageBox::about(this, "title", "wait prve...");
+        QMessageBox::about(this, _U("任务已开始"), _U("正在处理中，请等待"));
     }
     else
     {
@@ -392,7 +392,7 @@ void MainWindow::on_addPath_Btn_clicked()
 {
     QString dir = QFileDialog::getExistingDirectory(
         this,
-        tr("浏览目录"),
+        _U("浏览目录"),
         "",
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
     );
@@ -404,7 +404,7 @@ void MainWindow::on_addPath_Btn_clicked()
     auto paths = ui->searchPathList->findItems(dir, Qt::MatchExactly);
     if (!paths.empty())
     {
-        QMessageBox::information(this, "same dir", QString("搜索目录中已经存在 %1").arg(dir), QMessageBox::Ok);
+        QMessageBox::information(this, _U("重复添加"), QString(_U("搜索目录中已经存在 %1")).arg(dir), QMessageBox::Ok);
         return;
     }
 
@@ -412,8 +412,7 @@ void MainWindow::on_addPath_Btn_clicked()
     paths = ui->searchPathList->findItems(dir, Qt::MatchContains);
     if (!paths.empty())
     {
-        // "已经添加了 %1 的子目录，是否将所有子目录移除？"
-        if (QMessageBox::Yes == QMessageBox::question(this, "sub dir", QString("remove all sub dir of %1 ?").arg(dir), QMessageBox::Yes, QMessageBox::No))
+        if (QMessageBox::Yes == QMessageBox::question(this, _U("确认"), QString(_U("已经添加了 %1 的子目录，是否将所有子目录移除？")).arg(dir), QMessageBox::Yes, QMessageBox::No))
         {
             for (auto widget = paths.begin(); widget != paths.end(); ++widget)
             {
@@ -439,7 +438,7 @@ void MainWindow::on_addPath_Btn_clicked()
 #ifdef _DEBUG
             ++parentDirCount;
 #endif
-            if (QMessageBox::Yes == QMessageBox::question(this, "parent dir", QString("已经添加了 %1 的父目录，是否将所有父目录移除并更换为该目录？").arg(dir), QMessageBox::Yes, QMessageBox::No))
+            if (QMessageBox::Yes == QMessageBox::question(this, _U("确认"), QString(_U("已经添加了 %1 的父目录，是否将所有父目录移除并更换为该目录？")).arg(dir), QMessageBox::Yes, QMessageBox::No))
             {
                 auto widget = ui->searchPathList->takeItem(i);
                 delete widget;

@@ -1229,9 +1229,9 @@ bool Alisa::ImageImpl::Blend(const ImageImpl * obj, int offsetX, int offsetY, E_
         return false;
     }
 
-    for (size_t h = 0; h < obj->BaseInfo.Height; ++h)
+    for (int h = 0; h < obj->BaseInfo.Height; ++h)
     {
-        for (size_t w = 0; w < obj->BaseInfo.Width; ++w)
+        for (int w = 0; w < obj->BaseInfo.Width; ++w)
         {
             const auto & srcPixel = obj->Pixels[h][w];
             if (srcPixel.A > 0)

@@ -48,7 +48,7 @@ void ExpandDirectory(
 void GetSubFileList(std::vector<std::wstring> &inputPath, std::vector<std::wstring>& resultList)
 {
     resultList.clear();
-    for (int i = 0; i < inputPath.size(); ++i)
+    for (size_t i = 0; i < inputPath.size(); ++i)
     {
         DWORD attr = GetFileAttributes(inputPath[i].c_str());
         int fileNum = 0;

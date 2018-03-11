@@ -1,4 +1,4 @@
-#ifndef QPICTHREAD_H
+﻿#ifndef QPICTHREAD_H
 #define QPICTHREAD_H
 
 
@@ -16,7 +16,7 @@ public:
 
     virtual void run();
 
-    void SetPath(const QStringList & path);
+    void SetPath(const QStringList & path, float threshold);
     bool Abort();
 
 signals:
@@ -24,6 +24,7 @@ signals:
 
 private:
     QStringList Path;
+    float Threshold;
     MainWindow *MainWnd;
     bool continueRun;
 };

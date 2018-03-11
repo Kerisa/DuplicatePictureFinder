@@ -35,7 +35,8 @@ SOURCES += \
     picture.cpp \
     customgraphicsview.cpp \
     movetorecyclebin.cpp \
-    qpicthread.cpp
+    qpicthread.cpp \
+    optionsdialog.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -48,10 +49,12 @@ HEADERS += \
     customtreewidget.h \
     customgraphicsview.h \
     movetorecyclebin.h \
-    qpicthread.h
+    qpicthread.h \
+    optionsdialog.h
 
 FORMS += \
-        mainwindow.ui
+        mainwindow.ui \
+    options.ui
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/lib/ -llibpng16
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/lib/ -llibpng16_d

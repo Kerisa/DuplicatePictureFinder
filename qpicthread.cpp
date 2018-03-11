@@ -1,4 +1,4 @@
-#include "qpicthread.h"
+﻿#include "qpicthread.h"
 #include "mainwindow.h"
 #include "OpenFiles.h"
 #include "picture.h"
@@ -8,6 +8,7 @@
 QPicThread::QPicThread(MainWindow *mainWnd)
 {
     continueRun = true;
+    Threshold = 0.95f;
     MainWnd = mainWnd;
 
     connect(this, SIGNAL(PictureProcessFinish()), MainWnd, SLOT(OnPictureProcessFinish()));
@@ -26,7 +27,7 @@ void QPicThread::run()
     imagesInfo.resize(out.size());
 
     Alisa::ImageFeatureVector fv;
-    fv.Initialize();
+    fv.Initialize(Threshold);
 
     for (size_t i = 0; i < out.size() && continueRun; ++i)
     {
@@ -94,9 +95,10 @@ void QPicThread::run()
     exit();
 }
 
-void QPicThread::SetPath(const QStringList &path)
+void QPicThread::SetPath(const QStringList &path, float threshold)
 {
     Path = path;
+    Threshold = threshold;
 }
 
 bool QPicThread::Abort()

@@ -13,6 +13,7 @@
 #include "ui_mainwindow.h"
 #include "movetorecyclebin.h"
 #include "qpicthread.h"
+#include "optionsdialog.h"
 
 #define _U(str) QString::fromWCharArray(L##str)
 
@@ -45,6 +46,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->searchResult_treeWidget->InitTreeView();
 
     procThread = nullptr;
+    Threshold = 0.95f;
 }
 
 MainWindow::~MainWindow()
@@ -190,7 +192,9 @@ void MainWindow::MenuAct_StopSearch()
 
 void MainWindow::MenuAct_Option()
 {
-    QMessageBox::about(this, "title", "Option.");
+    OptionsDialog dlg(this, Threshold);
+    dlg.exec();
+    Threshold = dlg.GetPictureThreshold();
 }
 
 void MainWindow::MenuAct_DeleteCheckedFile()
@@ -399,7 +403,7 @@ void MainWindow::on_startSearchBtn_clicked()
             text.push_back(ui->searchPathList->item(i)->text());
         }
 
-        procThread->SetPath(text);
+        procThread->SetPath(text, Threshold);
         procThread->start();
     }
 }

@@ -78,6 +78,7 @@ private:
     DisplayImage imageLeft, imageRight;
     QPicThread *procThread;
 
+    float Threshold;
     std::vector<std::vector<TreeViewImageInfo>> pictureGroup;
 };
 

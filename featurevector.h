@@ -42,22 +42,14 @@ namespace Alisa
 
     class ImageFeatureVector
     {
-    public:
-        typedef std::map<unsigned int, FeatureData> SingleDataMap;
-        enum ProcessState{
-            STATE_NOT_START,
-            STATE_PROCESSING,
-            STATE_FINISH,
-        };
-
-    private:
         struct __helpdata
         {
             const float invalid_value = -1;
-            int element_count;
-            int filled_index;       // 已更新的索引号
-            float *pvalues;
-            __helpdata() : element_count(0), filled_index(0), pvalues(nullptr) { }
+            int         element_count{ 0 };
+            int         filled_index{ 0 };       // 已更新的索引号
+            float *     pvalues{ nullptr };
+            __helpdata() = default;
+            __helpdata(const __helpdata &) = delete;
             void Init(int size)
             {
                 if (!pvalues)
@@ -72,41 +64,39 @@ namespace Alisa
             {
                 if (pvalues) delete[] pvalues;
             }
-        private:
-            __helpdata(const __helpdata &);
         };
+
+
+    public:
+        typedef std::map<unsigned int, FeatureData> SingleDataMap;
+        enum ProcessState {
+            STATE_NOT_START,
+            STATE_PROCESSING,
+            STATE_FINISH,
+        };
+
 
     public:
         ImageFeatureVector();
-        bool Initialize(int _iterations = 1, int _DivideRegion = 16);
-        void Clear();
-        bool AddPicture(const wchar_t * filename, const Image & img);
-        bool DivideGroup();
-        std::vector<std::vector<string_t>> GetGroupResult() const;
+
+        bool                                Initialize(float threshold = 0.95f, int iterations = 1);
+        void                                Clear();
+        bool                                AddPicture(const wchar_t * filename, const Image & img);
+        bool                                DivideGroup();
+        std::vector<std::vector<string_t>>  GetGroupResult() const;
 
     private:
-        inline int min(int t, int v) { return t < v ? t : v; }
+        inline int                          min(int t, int v) { return t < v ? t : v; }
 
         // 巴氏距离
-#if 0
-        float Calc(const FeatureData &src, const FeatureData &dst);
-#endif
-        float CalcGroup(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst, __helpdata *phsrc = nullptr, __helpdata *phdst = nullptr);
-#if 0
-        float CalcGroup2(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst, __helpdata *phsrc = nullptr, __helpdata *phdst = nullptr);
-#endif
+        float                               CalcGroup(std::vector<SingleDataMap::iterator> &src, std::vector<SingleDataMap::iterator> &dst, __helpdata *phsrc = nullptr, __helpdata *phdst = nullptr);
 
     private:
-        int mDivideRegion;                  // 图像颜色划分精度, 每mcDivideRegion个像素作为一个区间
-                                            // 值越大则判断越粗糙
-        int mDimension;                     // = 0x100 / mcDivideRegion
-        const float mcThreshold = 0.95f;    // 判断图像相似的阈值
-        int mIterations;                    // 计算迭代的次数
-
-        ProcessState mProcessState;
-
-        SingleDataMap mData;
-        std::vector<std::vector<SingleDataMap::iterator>> mGroup;
+        float                                               mThreshold{ 0.95f };                // 判断图像相似的阈值
+        int                                                 mIterations{ 1 };                   // 计算迭代的次数
+        ProcessState                                        mProcessState{ STATE_NOT_START };
+        SingleDataMap                                       mData;
+        std::vector<std::vector<SingleDataMap::iterator>>   mGroup;
 
         static bool CrcInitialized;
     };

@@ -133,6 +133,7 @@ bool Alisa::ImageFeatureVector::AddPicture(const wchar_t * filename, const Image
 bool Alisa::ImageFeatureVector::DivideGroup()
 {
     assert(mIterations > 0);
+    assert(mProcessState != STATE_PROCESSING);
     mProcessState = STATE_PROCESSING;
 
     // 最初每张图像各成一组
@@ -246,7 +247,9 @@ float Alisa::ImageFeatureVector::CalcGroup(
         float s_tot = 0.0f, d_tot = 0.0f;
         if (phsrc && phsrc->element_count == src.size()
             && phsrc->pvalues[i] != phsrc->invalid_value)    // 数据有效
+        {
             s_tot = phsrc->pvalues[i];
+        }
         else
         {
             for (size_t j = 0; j < src.size(); ++j)
@@ -276,7 +279,9 @@ float Alisa::ImageFeatureVector::CalcGroup(
 
         if (phdst && phdst->element_count == dst.size()
             && phdst->pvalues[i] != phsrc->invalid_value)
+        {
             d_tot = phdst->pvalues[i];
+        }
         else
         {
             for (size_t j = 0; j < dst.size(); ++j)

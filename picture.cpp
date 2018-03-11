@@ -54,10 +54,6 @@ namespace Alisa
         Image CreateGray() const;
         bool RemoveAlpha();
         bool AddAlpha();
-        
-        // 添加/移除 lapha 通道
-
-        // ico / gif / mpng / tiff / webp / 调色板
 
     private:
         E_ImageType GetImageType(const string_t & filename);

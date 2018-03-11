@@ -382,8 +382,6 @@ void MainWindow::InitStatusBar()
 {
     QStatusBar *status_bar = statusBar();
 
-    //status_bar->set
-
     // 进度条
     progressBar = new QProgressBar();
     progressBar->setRange(0,100);

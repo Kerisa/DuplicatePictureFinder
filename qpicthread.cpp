@@ -4,7 +4,51 @@
 #include "picture.h"
 #include "featurevector.h"
 
+#include <array>
+
 #define _U(str) QString::fromWCharArray(L##str)
+
+struct SubThreadData
+{
+    std::vector<const std::wstring *>::const_iterator  fileStart;
+    std::vector<const std::wstring *>::const_iterator  fileEnd;
+    std::vector<Alisa::ImageInfo>::iterator     imgStart;
+    std::vector<Alisa::ImageInfo>::iterator     imgEnd;
+    Alisa::ImageFeatureVector *                 fv;
+    bool *                                      continueProc;
+    int                                         procCnt;
+    int                                         failedCnt;
+};
+
+class ReadFileSubThread : public QThread
+{
+public:
+    ReadFileSubThread(SubThreadData *data) : Data(data) { }
+
+    virtual void run()
+    {
+        auto imgIt = Data->imgStart;
+        for (auto it = Data->fileStart; it != Data->fileEnd && *Data->continueProc; ++Data->procCnt, ++it, ++imgIt)
+        {
+            Alisa::Image image;
+            if (!image.Open(**it))
+            {
+                ++Data->failedCnt;
+                Q_ASSERT(0);
+                continue;
+            }
+
+            *imgIt = image.GetImageInfo();
+            Data->fv->AddPicture((*it)->c_str(), image);
+
+        }
+        Q_ASSERT(!*Data->continueProc || imgIt == Data->imgEnd);
+        exit();
+    }
+
+private:
+    SubThreadData *Data;
+};
 
 
 QPicThread::QPicThread(MainWindow *mainWnd)
@@ -28,12 +72,14 @@ void QPicThread::run()
         path.push_back(qs.toStdWString());
     GetSubFileList(path, out);
 
-    std::vector<Alisa::ImageInfo> imagesInfo;
-    imagesInfo.resize(out.size());
-
     Alisa::ImageFeatureVector fv;
     fv.Initialize(Threshold);
 
+
+    emit PictureProcessStepMsg(0, _U("正在扫描文件..."));
+
+    // 筛除不处理的文件
+    std::vector<const std::wstring *> out2;
     for (size_t i = 0; i < out.size() && continueRun; ++i)
     {
         QString extension = QString::fromStdWString(out[i].substr(out[i].find_last_of('.') + 1));
@@ -42,18 +88,69 @@ void QPicThread::run()
             extension.compare("jpg", Qt::CaseInsensitive))
                 continue;
 
-        emit PictureProcessStepMsg(0.7f * i / out.size(), _U("正在扫描文件..."));
-
-        Alisa::Image image;
-        if (!image.Open(out[i]))
-        {
-            Q_ASSERT(0);
-            continue;
-        }
-
-        imagesInfo[i] = image.GetImageInfo();
-        fv.AddPicture(out[i].c_str(), image);
+        out2.push_back(&out[i]);
     }
+
+    // 存放图像基本信息，与 out2 一一对应
+    std::vector<Alisa::ImageInfo> imagesInfo;
+    imagesInfo.resize(out2.size());
+
+    // 多线程读取
+    const int threadCounts = 5;
+    QVector<QPair<ReadFileSubThread*, SubThreadData*>> threads;
+    int partCount = (out2.size() + threadCounts - 1) / threadCounts;
+    for (int i = 0; i < threadCounts; ++i)
+    {
+        auto d = new SubThreadData;
+        d->continueProc = &continueRun;
+        d->failedCnt =0;
+        d->procCnt = 0;
+        d->fv = &fv;
+        d->fileStart = out2.begin() + i * partCount;
+        d->fileEnd   = out2.begin() + qMin<int>((i + 1) * partCount, out2.size());
+        d->imgStart  = imagesInfo.begin() + i * partCount;
+        d->imgEnd    = imagesInfo.begin() + qMin<int>((i + 1) * partCount, out2.size());
+
+        auto th = new ReadFileSubThread(d);
+        threads.push_back(QPair<ReadFileSubThread*, SubThreadData*>(th, d));
+        th->start();
+    }
+
+    // 等待处理并更新状态栏进度
+    while (1)
+    {
+        int count = 0;
+        for (int i = 0; i < threads.size(); ++i)
+        {
+            count += threads[i].second->procCnt;
+        }
+        emit PictureProcessStepMsg(0.7f * count / out2.size(), _U("正在扫描文件..."));
+        msleep(1000);
+        if (!continueRun || count >= out2.size())
+        {
+            for (auto &th : threads)
+            {
+                th.first->wait();
+            }
+            break;
+        }
+    }
+
+    int readFailed = 0;
+    for (auto & th : threads)
+    {
+        readFailed += th.second->failedCnt;
+    }
+    if (readFailed > 0)
+    {
+        Q_ASSERT(0);
+    }
+    for (auto & th : threads)
+    {
+        delete th.first;
+        delete th.second;
+    }
+
 
     if (!continueRun)
     {
@@ -85,9 +182,9 @@ void QPicThread::run()
         {
             TreeViewImageInfo info;
             info.fileName = QString::fromStdWString(fileName);
-            for (size_t k = 0; k < out.size(); ++k)
+            for (size_t k = 0; k < out2.size(); ++k)
             {
-                if (!out[k].compare(fileName))
+                if (!out2[k]->compare(fileName))
                 {
                     auto & imageBaseInfo = imagesInfo[k];
                     info.height = imageBaseInfo.Height;
@@ -122,5 +219,5 @@ bool QPicThread::Abort()
         return true;
 
     continueRun = false;
-    return wait(3000);
+    return wait(5000);
 }

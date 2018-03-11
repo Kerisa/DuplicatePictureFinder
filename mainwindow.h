@@ -15,6 +15,7 @@ class QGraphicsScene;
 class QTreeWidgetItem;
 class QGraphicsView;
 class QLabel;
+class QProgressBar;
 
 struct DisplayImage
 {
@@ -67,6 +68,7 @@ public slots:
     void MenuAct_UncheckAll();
     void MenuAct_ResetCheck();
     void MenuAct_RemoveSelectRecord();
+    void OnPictureProcessStep(float percent, const QString & msg);
 
 private slots:
     void on_addPath_Btn_clicked();
@@ -75,6 +77,9 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+    QProgressBar *progressBar;
+    QLabel *statusBarMessage;
+
     DisplayImage imageLeft, imageRight;
     QPicThread *procThread;
 

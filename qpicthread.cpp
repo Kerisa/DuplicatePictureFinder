@@ -4,6 +4,8 @@
 #include "picture.h"
 #include "featurevector.h"
 
+#define _U(str) QString::fromWCharArray(L##str)
+
 
 QPicThread::QPicThread(MainWindow *mainWnd)
 {
@@ -11,7 +13,10 @@ QPicThread::QPicThread(MainWindow *mainWnd)
     Threshold = 0.95f;
     MainWnd = mainWnd;
 
-    connect(this, SIGNAL(PictureProcessFinish()), MainWnd, SLOT(OnPictureProcessFinish()));
+    auto b = connect(this, SIGNAL(PictureProcessFinish()), MainWnd, SLOT(OnPictureProcessFinish()));
+    Q_ASSERT(b);
+    b = connect(this, SIGNAL(PictureProcessStepMsg(float, const QString &)), MainWnd, SLOT(OnPictureProcessStep(float, const QString &)));
+    Q_ASSERT(b);
 }
 
 void QPicThread::run()
@@ -37,6 +42,8 @@ void QPicThread::run()
             extension.compare("jpg", Qt::CaseInsensitive))
                 continue;
 
+        emit PictureProcessStepMsg(0.7f * i / out.size(), _U("正在扫描文件..."));
+
         Alisa::Image image;
         if (!image.Open(out[i]))
         {
@@ -50,17 +57,23 @@ void QPicThread::run()
 
     if (!continueRun)
     {
+        emit PictureProcessStepMsg(0, _U("处理中止"));
         exit();
         return;
     }
+
+    emit PictureProcessStepMsg(0.7f, _U("正在比较..."));
 
     fv.DivideGroup();
 
     if (!continueRun)
     {
+        emit PictureProcessStepMsg(0, _U("处理中止"));
         exit();
         return;
     }
+
+    emit PictureProcessStepMsg(0.95f, _U("正在生成结果..."));
 
     std::vector<std::vector<TreeViewImageInfo>> groups;
     auto _result = fv.GetGroupResult();
@@ -90,6 +103,8 @@ void QPicThread::run()
     }
     MainWnd->SetGroupResult(groups);
 
+
+    emit PictureProcessStepMsg(1, _U("查找完成"));
     emit PictureProcessFinish();
 
     exit();

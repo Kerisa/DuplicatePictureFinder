@@ -5,6 +5,7 @@
 #include <QFileDialog>
 #include <QFileIconProvider>
 #include <QResizeEvent>
+#include <QProgressBar>
 
 #include <vector>
 #include <string>
@@ -291,6 +292,12 @@ void MainWindow::MenuAct_RemoveSelectRecord()
     }
 }
 
+void MainWindow::OnPictureProcessStep(float percent, const QString &msg)
+{
+    progressBar->setValue(percent * 100);
+    statusBarMessage->setText(msg);
+}
+
 void MainWindow::InitMenuBar()
 {
     QMenuBar *menu_bar = menuBar();
@@ -375,13 +382,17 @@ void MainWindow::InitStatusBar()
 {
     QStatusBar *status_bar = statusBar();
 
-    QLabel *label = new QLabel("label", this);
+    //status_bar->set
 
-    //QPushButton *push_btn = new QPushButton("Button", this);
+    // 进度条
+    progressBar = new QProgressBar();
+    progressBar->setRange(0,100);
+    progressBar->setValue(0);
+    status_bar->addWidget(progressBar);
 
-    status_bar->addPermanentWidget(label);
-
-    status_bar->showMessage("Message");
+    statusBarMessage = new QLabel();
+    statusBarMessage->setText("");
+    status_bar->addWidget(statusBarMessage, 1);
 }
 
 void MainWindow::on_startSearchBtn_clicked()
@@ -492,6 +503,7 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 {
     QMainWindow::resizeEvent(event);
 
+
     const int halfWidth = event->size().width() / 2;
     const int halfHeight = event->size().height() / 2;
 
@@ -511,7 +523,7 @@ void MainWindow::resizeEvent(QResizeEvent* event)
     ui->removePath_Btn->setGeometry(halfWidth * 2 - 6 - 75 - 30, halfHeight * 1.57 + 10, 23, 23);
     ui->startSearchBtn->setGeometry(halfWidth * 2 - 6 - 75, halfHeight * 1.57 + 10, 75, 23);
 
-    ui->searchPathList->setGeometry(6, halfHeight * 1.57 + 35, halfWidth * 2 - 12, halfHeight * 0.43 - 95);
+    ui->searchPathList->setGeometry(6, halfHeight * 1.57 + 35, halfWidth * 2 - 12, halfHeight * 0.43 - 35 - 65);
 
     // 调整树列表的列宽
     ui->searchResult_treeWidget->AdjustColumeWidth();

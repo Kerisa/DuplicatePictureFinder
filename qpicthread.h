@@ -21,6 +21,7 @@ public:
 
 signals:
     void PictureProcessFinish();
+    void PictureProcessStepMsg(float percent, const QString & msg);
 
 private:
     QStringList Path;

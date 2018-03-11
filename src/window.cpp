@@ -144,6 +144,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 int main3(int argc, wchar_t **argv);
+int main3_mt(int argc, wchar_t **argv);
 int main4(int argc, wchar_t **argv);
 int main5(int argc, wchar_t **argv);
 int main6(int argc, wchar_t **argv);
@@ -154,6 +155,6 @@ int main_test_pixel(int argc, wchar_t **argv);
 int wmain(int argc, wchar_t **argv)
 {
     //return main2(GetModuleHandle(NULL), NULL, NULL, SW_SHOWNORMAL);
-    return main_test_pixel(argc, argv);
-    return main3(argc, argv);
+    //return main_test_pixel(argc, argv);
+    return main3_mt(argc, argv);
 }

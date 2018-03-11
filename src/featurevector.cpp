@@ -111,13 +111,18 @@ bool Alisa::ImageFeatureVector::AddPicture(const wchar_t * filename, const Image
 {
     assert(filename);
     unsigned int crc = CRC32_4((const unsigned char*)filename, 0, wcslen(filename) * sizeof(wchar_t));
+
+    mDataLock.lock();
     assert(mData.find(crc) == mData.end());
     auto res = mData.insert(std::make_pair(crc, FeatureData()));
     FeatureData & data = res.first->second;
+    mDataLock.unlock();
 
     if (!data.BuildHistogram(img, filename))
     {
+        mDataLock.lock();
         mData.erase(crc);
+        mDataLock.unlock();
         assert(0);
         return false;
     }

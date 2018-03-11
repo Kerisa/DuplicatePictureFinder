@@ -1,5 +1,7 @@
 
 #include <assert.h>
+#include <array>
+#include <algorithm>
 #include <vector>
 #include <stdio.h>
 #include <string>
@@ -9,6 +11,7 @@
 #include "OpenFiles.h"
 #include <Windows.h>
 #include "window.h"
+#include <thread>
 
 int main8(int argc, wchar_t **argv)
 {
@@ -99,6 +102,8 @@ int main7(int argc, wchar_t **argv)
 
 int main3(int argc, wchar_t **argv)
 {
+    auto ss = GetTickCount();
+
     // 计算巴氏距离并分组
     std::vector<std::wstring> path, out;
     if (argc >= 2)
@@ -123,8 +128,9 @@ int main3(int argc, wchar_t **argv)
                 assert(0);
                 continue;
             }
-
+            
             fv.AddPicture(out[i].c_str(), img);
+
         }
 
         // svd
@@ -135,6 +141,74 @@ int main3(int argc, wchar_t **argv)
     else
         fprintf(stderr, "Usage:\r\n");
 
+    auto ss1 = GetTickCount();
+    printf("total %d ms\n", ss1 - ss);
+    system("pause");
+    return 0;
+}
+
+
+void thread_add(std::vector<std::wstring>::iterator start, std::vector<std::wstring>::iterator end,  Alisa::ImageFeatureVector & fv,int *pFailedCount)
+{
+    *pFailedCount = 0;
+    for (auto it = start; it != end; ++it)
+    {
+        Alisa::Image img;
+        if (!img.Open(*it))
+        {
+            ++(*pFailedCount);
+            assert(0);
+            continue;
+        }
+
+        fv.AddPicture((*it).c_str(), img);
+    }
+}
+
+int main3_mt(int argc, wchar_t **argv)
+{
+    auto ss = GetTickCount();
+
+    // 计算巴氏距离并分组
+    std::vector<std::wstring> path, out;
+    if (argc >= 2)
+    {
+        for (int i = 1; i < argc; ++i)
+            path.push_back(std::wstring(argv[i]));
+        GetSubFileList(path, out);
+
+        Alisa::ImageFeatureVector fv;
+        fv.Initialize();
+
+#undef min
+        constexpr int subThreadCount = 5;
+        std::array<std::pair<std::thread, int>, subThreadCount> threads;
+        int partCount = out.size() / subThreadCount;
+        for (int i = 0; i < subThreadCount; ++i)
+        {
+            int startIdx = i * partCount;
+            int endIdx = std::min<int>((i + 1) * partCount, out.size());
+            printf("thread %d arnge: [%d, %d)\n", i, startIdx, endIdx);
+            threads[i].first = std::thread(thread_add, out.begin() + startIdx, out.begin() + endIdx, std::ref(fv), &threads[i].second);
+        }
+
+        for (int i = 0; i < subThreadCount; ++i)
+        {
+            threads[i].first.join();
+        }
+
+        for (int i = 0; i < subThreadCount; ++i)
+        {
+            printf("thread status: %d failed count = %d\n", i, threads[i].second);
+        }
+
+        fv.DivideGroup();
+    }
+    else
+        fprintf(stderr, "Usage:\r\n");
+
+    auto ss1 = GetTickCount();
+    printf("total %d ms\n", ss1 - ss);
     system("pause");
     return 0;
 }

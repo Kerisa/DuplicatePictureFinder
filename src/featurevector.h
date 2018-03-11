@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <mutex>
 
 #include "types.h"
 
@@ -101,6 +102,7 @@ namespace Alisa
         ProcessState                                        mProcessState{ STATE_NOT_START };
         SingleDataMap                                       mData;
         std::vector<std::vector<SingleDataMap::iterator>>   mGroup;
+        std::mutex                                          mDataLock;
 
         static bool CrcInitialized;
     };

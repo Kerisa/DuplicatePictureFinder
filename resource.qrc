@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/new/ico">
+        <file>res/Add folder.ico</file>
+        <file>res/Close folder.ico</file>
+        <file>res/Pinion.ico</file>
+        <file>res/Play.ico</file>
+        <file>res/Stop playing.ico</file>
+        <file>res/Search.ico</file>
+        <file>res/Erase.ico</file>
+        <file>res/Eraser.ico</file>
+        <file>res/Exit.ico</file>
+        <file>res/Undo.ico</file>
+    </qresource>
+</RCC>

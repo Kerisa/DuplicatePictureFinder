@@ -289,27 +289,6 @@ void MainWindow::MenuAct_RemoveSelectRecord()
         delete item;
     }
     return;
-
-    auto topLevelItemCount = ui->searchResult_treeWidget->topLevelItemCount();
-    for (int i = topLevelItemCount - 1; i >= 0; --i)
-    {
-        auto topItem = ui->searchResult_treeWidget->topLevelItem(i);
-        if (topItem->isSelected())
-        {
-            delete ui->searchResult_treeWidget->takeTopLevelItem(i);
-        }
-        else
-        {
-            auto childCount = topItem->childCount();
-            for (int k = childCount - 1; k >= 0; --k)
-            {
-                if (topItem->child(k)->isSelected())
-                {
-                    delete topItem->takeChild(k);
-                }
-            }
-        }
-    }
 }
 
 void MainWindow::OnPictureProcessStep(float percent, const QString &msg)
@@ -330,7 +309,6 @@ void MainWindow::InitMenuBar()
     Q_ASSERT(b);
 
     menuFile->addAction(action_Exit);
-
     menu_bar->addMenu(menuFile);
 
 
@@ -362,7 +340,6 @@ void MainWindow::InitMenuBar()
     menuAction->addAction(action_RemoveSelectRecord);
     menuAction->addSeparator();
     menuAction->addAction(action_deleteCheckedFile);
-
     menu_bar->addMenu(menuAction);
 
 
@@ -380,11 +357,11 @@ void MainWindow::InitMenuBar()
     action_option->setIcon(QIcon(":/new/ico/res/Pinion.ico"));
     b = connect(action_option, SIGNAL(triggered()), this, SLOT(MenuAct_Option()));
     Q_ASSERT(b);
+
     menuSearch->addAction(action_startSearch);
     menuSearch->addAction(action_stopSearch);
     menuSearch->addSeparator();
     menuSearch->addAction(action_option);
-
     menu_bar->addMenu(menuSearch);
 
 
@@ -393,8 +370,8 @@ void MainWindow::InitMenuBar()
     QAction *action_about = new QAction(_U("关于(&A)"), this);
     b = connect(action_about, SIGNAL(triggered()), this, SLOT(MenuAct_About()));
     Q_ASSERT(b);
-    menuHelp->addAction(action_about);
 
+    menuHelp->addAction(action_about);
     menu_bar->addMenu(menuHelp);
 }
 

@@ -44,7 +44,7 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    void SetGroupResult(const std::vector<std::vector<TreeViewImageInfo>> & group) { pictureGroup = group; }
+    void SetGroupResult(const std::vector<std::vector<TreeViewImageInfo>> & group, const std::vector<QString> &readFailedFile) { pictureGroup = group; ReadFailedFile = readFailedFile;}
     void RefreshGraphicImage(const QString &filename, DisplayImage *img, QGraphicsView *view, QLabel *filenameLabel, bool loadFile = true);
 
 protected:
@@ -85,6 +85,7 @@ private:
 
     float Threshold;
     std::vector<std::vector<TreeViewImageInfo>> pictureGroup;
+    std::vector<QString> ReadFailedFile;
 };
 
 #endif // MAINWINDOW_H

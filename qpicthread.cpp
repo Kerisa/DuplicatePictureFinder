@@ -14,10 +14,10 @@ struct SubThreadData
     std::vector<const std::wstring *>::const_iterator  fileEnd;
     std::vector<Alisa::ImageInfo>::iterator     imgStart;
     std::vector<Alisa::ImageInfo>::iterator     imgEnd;
-    Alisa::ImageFeatureVector *                 fv;
-    bool *                                      continueProc;
-    int                                         procCnt;
-    int                                         failedCnt;
+    Alisa::ImageFeatureVector *                 fv{ nullptr };
+    bool *                                      continueProc{ nullptr };
+    int                                         procCnt{ 0 };
+    std::vector<const std::wstring *>           failedFile;
 };
 
 class ReadFileSubThread : public QThread
@@ -33,7 +33,7 @@ public:
             Alisa::Image image;
             if (!image.Open(**it))
             {
-                ++Data->failedCnt;
+                Data->failedFile.push_back(*it);
                 Q_ASSERT(0);
                 continue;
             }
@@ -85,7 +85,8 @@ void QPicThread::run()
         QString extension = QString::fromStdWString(out[i].substr(out[i].find_last_of('.') + 1));
         if (extension.compare("png", Qt::CaseInsensitive) &&
             extension.compare("bmp", Qt::CaseInsensitive) &&
-            extension.compare("jpg", Qt::CaseInsensitive))
+            extension.compare("jpg", Qt::CaseInsensitive) &&
+            extension.compare("jpeg", Qt::CaseInsensitive))
                 continue;
 
         out2.push_back(&out[i]);
@@ -103,7 +104,6 @@ void QPicThread::run()
     {
         auto d = new SubThreadData;
         d->continueProc = &continueRun;
-        d->failedCnt =0;
         d->procCnt = 0;
         d->fv = &fv;
         d->fileStart = out2.begin() + i * partCount;
@@ -136,12 +136,13 @@ void QPicThread::run()
         }
     }
 
-    int readFailed = 0;
+    std::vector<QString> readFailedFile;
     for (auto & th : threads)
     {
-        readFailed += th.second->failedCnt;
+        for (auto & str : th.second->failedFile)
+            readFailedFile.push_back(QString::fromStdWString(*str));
     }
-    if (readFailed > 0)
+    if (!readFailedFile.empty())
     {
         Q_ASSERT(0);
     }
@@ -198,7 +199,7 @@ void QPicThread::run()
             curGroup.push_back(info);
         }
     }
-    MainWnd->SetGroupResult(groups);
+    MainWnd->SetGroupResult(groups, readFailedFile);
 
 
     emit PictureProcessStepMsg(1, _U("查找完成"));

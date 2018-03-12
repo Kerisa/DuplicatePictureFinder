@@ -145,7 +145,27 @@ void MainWindow::OnPictureProcessFinish()
         }
     }
     ui->searchResult_treeWidget->expandAll();
-    QMessageBox::information(this, _U("完成"), _U("处理结束!"));
+    if (ReadFailedFile.empty())
+    {
+        QMessageBox::information(this, _U("完成"), _U("处理结束!"));
+    }
+    else
+    {
+        QString str(_U("处理结束!有%1个文件读取失败：\n").arg(ReadFailedFile.size()));
+        int count = 0;
+        for (auto & s : ReadFailedFile)
+        {
+            str += s;
+            str += '\n';
+            if (++count >= 10)  // 显示前 10 个
+            {
+                if (ReadFailedFile.size() > 10)
+                    str += "...";
+                break;
+            }
+        }
+        QMessageBox::information(this, _U("完成"), str);
+    }
 }
 
 void MainWindow::OnTableItemClicked(bool left, QTreeWidgetItem* item, int colume)

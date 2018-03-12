@@ -183,7 +183,7 @@ int main3_mt(int argc, wchar_t **argv)
 #undef min
         constexpr int subThreadCount = 5;
         std::array<std::pair<std::thread, int>, subThreadCount> threads;
-        int partCount = out.size() / subThreadCount;
+        int partCount = (out.size() + subThreadCount - 1) / subThreadCount;
         for (int i = 0; i < subThreadCount; ++i)
         {
             int startIdx = i * partCount;

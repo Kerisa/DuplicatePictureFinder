@@ -8,7 +8,7 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = qt_windows
+TARGET = DuplicatePictureFinder
 TEMPLATE = app
 
 # The following define makes your compiler emit warnings if you use
@@ -31,35 +31,35 @@ else:win32:CONFIG(debug, debug|release): DEFINES += _DEBUG
 
 
 SOURCES += \
-    customtreewidget.cpp \
-        main.cpp \
-        mainwindow.cpp \
-    crc.cpp \
-    featurevector.cpp \
-    OpenFiles.cpp \
-    picture.cpp \
-    customgraphicsview.cpp \
-    movetorecyclebin.cpp \
-    qpicthread.cpp \
-    optionsdialog.cpp
+    $$PWD/src/customtreewidget.cpp \
+    $$PWD/src/main.cpp \
+    $$PWD/src/mainwindow.cpp \
+    $$PWD/src/crc.cpp \
+    $$PWD/src/featurevector.cpp \
+    $$PWD/src/OpenFiles.cpp \
+    $$PWD/src/picture.cpp \
+    $$PWD/src/customgraphicsview.cpp \
+    $$PWD/src/movetorecyclebin.cpp \
+    $$PWD/src/qpicthread.cpp \
+    $$PWD/src/optionsdialog.cpp
 
 HEADERS += \
-        mainwindow.h \
-    crc.h \
-    featurevector.h \
-    OpenFiles.h \
-    picture.h \
-    types.h \
-    Utility.h \
-    customtreewidget.h \
-    customgraphicsview.h \
-    movetorecyclebin.h \
-    qpicthread.h \
-    optionsdialog.h
+    $$PWD/src/mainwindow.h \
+    $$PWD/src/crc.h \
+    $$PWD/src/featurevector.h \
+    $$PWD/src/OpenFiles.h \
+    $$PWD/src/picture.h \
+    $$PWD/src/types.h \
+    $$PWD/src/Utility.h \
+    $$PWD/src/customtreewidget.h \
+    $$PWD/src/customgraphicsview.h \
+    $$PWD/src/movetorecyclebin.h \
+    $$PWD/src/qpicthread.h \
+    $$PWD/src/optionsdialog.h
 
 FORMS += \
-        mainwindow.ui \
-    options.ui
+    $$PWD/src/mainwindow.ui \
+    $$PWD/src/options.ui
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/lib/ -llibpng16
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/lib/ -llibpng16_d
@@ -79,4 +79,4 @@ else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/li
 else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/lib/jpeg_d.lib
 
 RESOURCES += \
-    resource.qrc
+    $$PWD/src/resource.qrc

@@ -226,7 +226,7 @@
   <customwidget>
    <class>CustomTreeWidget</class>
    <extends>QTreeWidget</extends>
-   <header location="global">customtreewidget.h</header>
+   <header>customtreewidget.h</header>
   </customwidget>
   <customwidget>
    <class>CustomGraphicsView</class>

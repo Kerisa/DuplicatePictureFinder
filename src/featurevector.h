@@ -1,10 +1,11 @@
 #pragma once
 
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
 #include <mutex>
-
+#include <stdio.h>
 #include "types.h"
 
 namespace Alisa
@@ -13,6 +14,12 @@ namespace Alisa
 
     class FeatureData
     {
+        static constexpr int Dimension    = 16;     // 每个通道划分为 16 段
+        static constexpr int DivideRegion = 16;     // 划分后每个通道中每一段含有的像素分量为 16
+                                                    // DivideRegion * Dimension == 256
+    public:
+        static constexpr int HistogramLength = Dimension * Dimension * Dimension;
+
     public:
         FeatureData() = default;
         FeatureData(FeatureData && fd);
@@ -22,23 +29,23 @@ namespace Alisa
         int GetPixelCount() const { return PixelCount; }
         bool GetHistogram(const int **ptr) const;
         bool BuildHistogram(const Image & img, const string_t & filename);
+        bool IsCachedData() const { return mFromCache; }
 
     private:
-        static constexpr int Dimension    = 16;     // 每个通道划分为 16 段
-        static constexpr int DivideRegion = 16;     // 划分后每个通道中每一段含有的像素分量为 16
-                                                    // DivideRegion * Dimension == 256
-    public:
-        static constexpr int HistogramLength = Dimension * Dimension * Dimension;
+        void SetData(const string_t & filename, const std::array<int, HistogramLength> & hist, int pixelCount, bool fromCache);
 
     private:
         string_t        Filename;
         int             PixelCount{ 0 };
         int             GroupIdx{ -1 };              // 计算后被归类到 ImageFeatureVector::mGroup[GroupIdx] 组
         int *           Histogram{ nullptr };
+        bool            mFromCache{ false };
 
     private:
         FeatureData(const FeatureData &) = delete;
         FeatureData & operator=(const FeatureData &) = delete;
+
+        friend class FeatureDataRecord;
     };
 
     class ImageFeatureVector
@@ -83,6 +90,7 @@ namespace Alisa
         bool                                Initialize(float threshold = 0.95f, int iterations = 1);
         void                                Clear();
         bool                                AddPicture(const wchar_t * filename, const Image & img);
+        bool                                AddPicture(unsigned int crc, FeatureData && data);
         bool                                DivideGroup();
         std::vector<std::vector<string_t>>  GetGroupResult() const;
 
@@ -101,5 +109,51 @@ namespace Alisa
         std::mutex                                          mDataLock;
 
         static bool CrcInitialized;
+
+        friend class FeatureDataRecord;
+    };
+
+
+    class FeatureDataRecord
+    {
+        struct Header
+        {
+            char Magic[4];
+            int  RecordCount;
+            int  HistogramLength;
+            int  EntryOffset;
+            bool UnicodeFileNameCrc;
+            char Reserved[15];
+        };
+        struct Record
+        {
+            unsigned long Crc32;
+            unsigned long PixelCount;
+            char          Reserved[8]{ 0 };
+            int           Histogram[FeatureData::HistogramLength];
+        };
+        struct Entry
+        {
+            unsigned long Crc32;
+            unsigned long Offset;
+        };
+
+    public:
+        FeatureDataRecord();
+        ~FeatureDataRecord();
+
+        bool OpenExist(const string_t & filename);
+        bool Create(const string_t & filename);
+        void Close();
+        bool SaveAllHistogramToFile(const ImageFeatureVector & fv);
+        bool LoadCacheHistogram(const string_t & filename, ImageFeatureVector & fv);
+
+    private:
+        string_t                               mCacheFileName;
+        std::map<unsigned long, unsigned long> mEntry;      // crc32 + offset
+        std::map<unsigned long, Record*>       mRecord;
+        FILE *                                 mCacheFile{ nullptr };
+        std::mutex                             mReadLock;
+        Header                                 mHeader;
     };
 }

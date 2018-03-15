@@ -13,6 +13,7 @@ Alisa::FeatureData::FeatureData(FeatureData && fd)
     Filename.assign(fd.Filename);
     Histogram = fd.Histogram;
     GroupIdx = fd.GroupIdx;
+    mFromCache = fd.mFromCache;
 
     fd.Filename.clear();
     fd.Histogram = nullptr;
@@ -34,6 +35,7 @@ bool Alisa::FeatureData::GetHistogram(const int ** ptr) const
 
 bool Alisa::FeatureData::BuildHistogram(const Image & img, const string_t & filename)
 {
+    mFromCache = false;
     Filename = filename;
     PixelCount = img.GetImageInfo().Height * img.GetImageInfo().Width;
     assert(!Histogram);
@@ -67,6 +69,15 @@ bool Alisa::FeatureData::BuildHistogram(const Image & img, const string_t & file
         assert(0);
         return false;
     }
+}
+
+void Alisa::FeatureData::SetData(const string_t & filename, const std::array<int, HistogramLength>& hist, int pixelCount, bool fromCache)
+{
+    mFromCache = fromCache;
+    Filename = filename;
+    PixelCount = pixelCount;
+    Histogram = new int[HistogramLength];
+    memcpy(Histogram, hist.data(), HistogramLength * sizeof(int));
 }
 
 
@@ -110,20 +121,32 @@ bool Alisa::ImageFeatureVector::AddPicture(const wchar_t * filename, const Image
     assert(filename);
     unsigned int crc = CRC32_4((const unsigned char*)filename, 0, wcslen(filename) * sizeof(wchar_t));
 
-    mDataLock.lock();
-    assert(mData.find(crc) == mData.end());
-    auto res = mData.insert(std::make_pair(crc, FeatureData()));
-    FeatureData & data = res.first->second;
-    mDataLock.unlock();
-
+    FeatureData data;
     if (!data.BuildHistogram(img, filename))
     {
-        mDataLock.lock();
-        mData.erase(crc);
-        mDataLock.unlock();
         assert(0);
+        std::unique_lock<std::mutex> lk(mDataLock);
+        mData.erase(crc);
         return false;
     }
+
+    {
+        std::unique_lock<std::mutex> lk(mDataLock);
+        assert(mData.find(crc) == mData.end());
+        auto res = mData.insert(std::make_pair(crc, FeatureData(std::move(data))));
+    }
+
+    // 添加图像会影响结果
+    mProcessState = STATE_NOT_START;
+    return true;
+}
+
+bool Alisa::ImageFeatureVector::AddPicture(unsigned int crc, FeatureData && data)
+{
+    mDataLock.lock();
+    assert(mData.find(crc) == mData.end());
+    auto res = mData.insert(std::make_pair(crc, FeatureData(std::move(data))));
+    mDataLock.unlock();
 
     // 添加图像会影响结果
     mProcessState = STATE_NOT_START;
@@ -157,8 +180,8 @@ bool Alisa::ImageFeatureVector::DivideGroup()
                 float distance = CalcGroup(mGroup[i], mGroup[j], &hd[i], &hd[j]);
                 //float distance = CalcGroup2(mGroup[i], mGroup[j], &hd[i], &hd[j]);
 
-//#if 0
-#ifdef _DEBUG
+#if 0
+//#ifdef _DEBUG
                 if (!mGroup[i].empty() && !mGroup[j].empty())
                     fprintf(stderr, "Group[%d](%d) to Group[%d](%d): Distance=%0.6f\r\n",
                         i, mGroup[i].size(), j, mGroup[j].size(), distance);
@@ -307,4 +330,187 @@ float Alisa::ImageFeatureVector::CalcGroup(
     }
     
     return sum;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+
+Alisa::FeatureDataRecord::FeatureDataRecord()
+{
+}
+
+Alisa::FeatureDataRecord::~FeatureDataRecord()
+{
+    Close();
+}
+
+bool Alisa::FeatureDataRecord::OpenExist(const string_t & filename)
+{
+    if (filename == mCacheFileName)
+        return true;
+
+    std::unique_lock<std::mutex> lk(mReadLock);
+
+    Close();
+
+#ifdef _UNICODE
+    errno_t err = _wfopen_s(&mCacheFile, filename.c_str(), L"rb+");
+#else
+    errno_t err = fopen_s(&mCacheFile, filename.c_str(), "rb+");
+#endif
+    
+    if (err)
+        goto _Failed;
+
+
+    Header header;
+    fread_s(&header, sizeof(header), 1, sizeof(header), mCacheFile);
+    if (memcmp(header.Magic, "DPF", 4))
+        goto _Failed;
+
+    if (header.HistogramLength != FeatureData::HistogramLength)
+        goto _Failed;
+
+    if (header.UnicodeFileNameCrc != (sizeof(filename.front()) == sizeof(wchar_t)))
+        goto _Failed;
+
+    auto entryBufSize = header.RecordCount * sizeof(Entry);
+    auto entryBuf = new unsigned char[entryBufSize];
+    fseek(mCacheFile, header.EntryOffset, SEEK_SET);
+    fread_s(entryBuf, entryBufSize, 1, entryBufSize, mCacheFile);
+    for (int i = 0; i < header.RecordCount; ++i)
+    {
+        Entry *e = reinterpret_cast<Entry*>(entryBuf + i * sizeof(Entry));
+        auto success = mEntry.insert(std::make_pair(e->Crc32, e->Offset));
+        assert(success.second);
+    }
+    delete[] entryBuf;
+    mHeader = header;
+    mCacheFileName = filename;
+    return true;
+
+_Failed:
+    if (mCacheFile)
+        fclose(mCacheFile);
+    return false;
+}
+
+bool Alisa::FeatureDataRecord::Create(const string_t & filename)
+{
+    Close();
+
+#ifdef _UNICODE
+    errno_t err = _wfopen_s(&mCacheFile, filename.c_str(), L"wb+");
+#else
+    errno_t err = fopen_s(&mCacheFile, filename.c_str(), "wb+");
+#endif
+
+    if (err)
+        return false;
+
+    mHeader.EntryOffset = sizeof(Header);
+    mHeader.HistogramLength = FeatureData::HistogramLength;
+    memcpy(mHeader.Magic, "DPF", 4);
+    mHeader.RecordCount = 0;
+    memset(mHeader.Reserved, 0, sizeof(mHeader.Reserved));
+#ifdef _UNICODE
+    mHeader.UnicodeFileNameCrc = 1;
+#else
+    mHeader.UnicodeFileNameCrc = 0;
+#endif
+    return true;
+}
+
+void Alisa::FeatureDataRecord::Close()
+{
+    if (mCacheFile)
+    {
+        fclose(mCacheFile);
+        mCacheFile = nullptr;
+    }
+}
+
+bool Alisa::FeatureDataRecord::SaveAllHistogramToFile(const ImageFeatureVector & fv)
+{
+    std::unique_lock<std::mutex> lk(mReadLock);
+    fflush(mCacheFile);
+
+    auto ret = fseek(mCacheFile, mHeader.EntryOffset, SEEK_SET);
+    assert(!ret);
+
+    bool newDataAdd = false;
+    for (auto & data : fv.mData)
+    {
+        if (mEntry.find(data.first) != mEntry.end())
+        {
+            assert(data.second.IsCachedData());
+            continue;
+        }
+        Record record;
+        record.Crc32 = data.first;
+        record.PixelCount = data.second.PixelCount;
+        memcpy(record.Histogram, data.second.Histogram, sizeof(int) * FeatureData::HistogramLength);
+        
+        auto ret = mEntry.insert(std::make_pair(record.Crc32, ftell(mCacheFile)));
+        assert(ret.second);
+        newDataAdd = true;
+
+        fwrite(&record, 1, sizeof(record), mCacheFile);
+    }
+
+    // 最后写入索引表
+    assert(!(ftell(mCacheFile) & 0xf));     // 16字节对齐
+    if (newDataAdd)
+    {
+        mHeader.EntryOffset = ftell(mCacheFile);
+        mHeader.RecordCount = mEntry.size();
+        for (auto & e : mEntry)
+        {
+            Entry entry;
+            entry.Crc32 = e.first;
+            entry.Offset = e.second;
+            fwrite(&entry, 1, sizeof(Entry), mCacheFile);
+        }
+
+        rewind(mCacheFile);
+        fwrite(&mHeader, 1, sizeof(Header), mCacheFile);
+    }
+
+    fflush(mCacheFile);
+
+    return true;
+}
+
+bool Alisa::FeatureDataRecord::LoadCacheHistogram(const string_t & filename, ImageFeatureVector & fv)
+{
+    if (!mCacheFile)
+        return false;
+
+    unsigned int crc = CRC32_4((const unsigned char*)filename.c_str(), 0, filename.size() * sizeof(wchar_t));
+    auto entryIt = mEntry.find(crc);
+    if (entryIt == mEntry.end())
+        return false;
+
+    Record record;
+    {
+        std::unique_lock<std::mutex> lk(mReadLock);
+        int ret = fseek(mCacheFile, entryIt->second, SEEK_SET);
+        if (ret != 0)
+        {
+            assert(0);
+            return false;
+        }
+        fread_s(&record, sizeof(record), 1, sizeof(record), mCacheFile);
+    }
+
+
+    FeatureData fd;
+    std::array<int, FeatureData::HistogramLength> hist;
+    memcpy(hist.data(), record.Histogram, sizeof(int) * FeatureData::HistogramLength);
+    fd.SetData(filename, hist, record.PixelCount, true);
+    fv.AddPicture(crc, std::move(fd));
+
+
+    return true;
 }

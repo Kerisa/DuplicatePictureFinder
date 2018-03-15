@@ -1,23 +1,25 @@
-﻿#include "qpicthread.h"
+﻿
+#include <array>
+#include "qpicthread.h"
 #include "mainwindow.h"
 #include "OpenFiles.h"
 #include "picture.h"
 #include "featurevector.h"
 
-#include <array>
+#include <windows.h>
 
 #define _U(str) QString::fromWCharArray(L##str)
 
 struct SubThreadData
 {
-    std::vector<const std::wstring *>::const_iterator  fileStart;
-    std::vector<const std::wstring *>::const_iterator  fileEnd;
+    std::vector<std::wstring>::const_iterator   fileStart;
+    std::vector<std::wstring>::const_iterator   fileEnd;
     std::vector<Alisa::ImageInfo>::iterator     imgStart;
     std::vector<Alisa::ImageInfo>::iterator     imgEnd;
     Alisa::ImageFeatureVector *                 fv{ nullptr };
-    bool *                                      continueProc{ nullptr };
-    int                                         procCnt{ 0 };
-    std::vector<const std::wstring *>           failedFile;
+    bool *                                      continueProc{ nullptr };        // 是否中断处理
+    int                                         readFileCount{ 0 };             // 已读取的数量
+    std::vector<const std::wstring *>           failedFile;                     // 读取失败的文件名
 };
 
 class ReadFileSubThread : public QThread
@@ -28,18 +30,17 @@ public:
     virtual void run()
     {
         auto imgIt = Data->imgStart;
-        for (auto it = Data->fileStart; it != Data->fileEnd && *Data->continueProc; ++Data->procCnt, ++it, ++imgIt)
+        for (auto it = Data->fileStart; it != Data->fileEnd && *Data->continueProc; ++Data->readFileCount, ++it, ++imgIt)
         {
             Alisa::Image image;
-            if (!image.Open(**it))
+            if (!image.Open(*it))
             {
-                Data->failedFile.push_back(*it);
-                Q_ASSERT(0);
+                Data->failedFile.push_back(&*it);
                 continue;
             }
 
             *imgIt = image.GetImageInfo();
-            Data->fv->AddPicture((*it)->c_str(), image);
+            Data->fv->AddPicture((it)->c_str(), image);
 
         }
         Q_ASSERT(!*Data->continueProc || imgIt == Data->imgEnd);
@@ -63,71 +64,75 @@ QPicThread::QPicThread(MainWindow *mainWnd)
     Q_ASSERT(b);
 }
 
-void QPicThread::run()
+int QPicThread::GetCPUCoreNum()
 {
-    continueRun = true;
+#if defined(WIN32)
+    SYSTEM_INFO info;
+    GetSystemInfo(&info);
+    return info.dwNumberOfProcessors;
+#elif defined(LINUX) || defined(SOLARIS) || defined(AIX)
+    return get_nprocs();   //GNU fuction
+#else
+  #error unkonwn os
+#endif
+}
 
-    std::vector<std::wstring> path, out;
-    for (auto & qs : Path)
-        path.push_back(qs.toStdWString());
-    GetSubFileList(path, out);
-
-    Alisa::ImageFeatureVector fv;
-    fv.Initialize(Threshold);
-
-
-    emit PictureProcessStepMsg(0, _U("正在扫描文件..."));
-
-    // 筛除不处理的文件
-    std::vector<const std::wstring *> out2;
-    for (size_t i = 0; i < out.size() && continueRun; ++i)
+std::vector<std::wstring> QPicThread::RemoveBadFiles(const std::vector<std::wstring> &in) const
+{
+    std::vector<std::wstring> fileGroup;
+    for (size_t i = 0; i < in.size() && continueRun; ++i)
     {
-        QString extension = QString::fromStdWString(out[i].substr(out[i].find_last_of('.') + 1));
+        QString extension = QString::fromStdWString(in[i].substr(in[i].find_last_of('.') + 1));
         if (extension.compare("png", Qt::CaseInsensitive) &&
             extension.compare("bmp", Qt::CaseInsensitive) &&
             extension.compare("jpg", Qt::CaseInsensitive) &&
             extension.compare("jpeg", Qt::CaseInsensitive))
                 continue;
 
-        out2.push_back(&out[i]);
+        fileGroup.push_back(in[i]);
     }
+    return fileGroup;
+}
 
-    // 存放图像基本信息，与 out2 一一对应
-    std::vector<Alisa::ImageInfo> imagesInfo;
-    imagesInfo.resize(out2.size());
-
+std::vector<QString> QPicThread::StartReadThread(
+        std::vector<std::wstring> & fileGroup,
+        std::vector<Alisa::ImageInfo> & imagesInfo,
+        Alisa::ImageFeatureVector & fv
+        )
+{
     // 多线程读取
-    const int threadCounts = 5;
+    const int threadCounts = qMax(GetCPUCoreNum() - 1, 1);
     QVector<QPair<ReadFileSubThread*, SubThreadData*>> threads;
-    int partCount = (out2.size() + threadCounts - 1) / threadCounts;
+    int partCount = (fileGroup.size() + threadCounts - 1) / threadCounts;
     for (int i = 0; i < threadCounts; ++i)
     {
         auto d = new SubThreadData;
         d->continueProc = &continueRun;
-        d->procCnt = 0;
+        d->readFileCount = 0;
         d->fv = &fv;
-        d->fileStart = out2.begin() + i * partCount;
-        d->fileEnd   = out2.begin() + qMin<int>((i + 1) * partCount, out2.size());
+        d->fileStart = fileGroup.begin() + i * partCount;
+        d->fileEnd   = fileGroup.begin() + qMin<int>((i + 1) * partCount, fileGroup.size());
         d->imgStart  = imagesInfo.begin() + i * partCount;
-        d->imgEnd    = imagesInfo.begin() + qMin<int>((i + 1) * partCount, out2.size());
+        d->imgEnd    = imagesInfo.begin() + qMin<int>((i + 1) * partCount, fileGroup.size());
 
         auto th = new ReadFileSubThread(d);
         threads.push_back(QPair<ReadFileSubThread*, SubThreadData*>(th, d));
         th->start();
     }
 
-    // 等待处理并更新状态栏进度
+    // 等待读取完成并更新状态栏进度
     while (1)
     {
         int count = 0;
         for (int i = 0; i < threads.size(); ++i)
         {
-            count += threads[i].second->procCnt;
+            count += threads[i].second->readFileCount;
         }
-        emit PictureProcessStepMsg(0.7f * count / out2.size(), _U("正在扫描文件..."));
+        emit PictureProcessStepMsg(0.7f * count / fileGroup.size(), _U("正在扫描文件..."));
         msleep(1000);
-        if (!continueRun || count >= out2.size())
+        if (!continueRun || count >= fileGroup.size())
         {
+            // 结束等待
             for (auto &th : threads)
             {
                 th.first->wait();
@@ -136,43 +141,27 @@ void QPicThread::run()
         }
     }
 
+    // 收集读取失败的文件
     std::vector<QString> readFailedFile;
     for (auto & th : threads)
     {
         for (auto & str : th.second->failedFile)
+        {
             readFailedFile.push_back(QString::fromStdWString(*str));
-    }
-    if (!readFailedFile.empty())
-    {
-        Q_ASSERT(0);
-    }
-    for (auto & th : threads)
-    {
+        }
         delete th.first;
         delete th.second;
     }
 
+    return readFailedFile;
+}
 
-    if (!continueRun)
-    {
-        emit PictureProcessStepMsg(0, _U("处理中止"));
-        exit();
-        return;
-    }
-
-    emit PictureProcessStepMsg(0.7f, _U("正在比较..."));
-
-    fv.DivideGroup();
-
-    if (!continueRun)
-    {
-        emit PictureProcessStepMsg(0, _U("处理中止"));
-        exit();
-        return;
-    }
-
-    emit PictureProcessStepMsg(0.95f, _U("正在生成结果..."));
-
+void QPicThread::GenerateResult(
+        const Alisa::ImageFeatureVector & fv,
+        const std::vector<std::wstring> & fileGroup,
+        const std::vector<Alisa::ImageInfo> & imagesInfo,
+        const std::vector<QString> & readFailedFile)
+{
     std::vector<std::vector<TreeViewImageInfo>> groups;
     auto _result = fv.GetGroupResult();
     for (auto & g : _result)
@@ -183,9 +172,9 @@ void QPicThread::run()
         {
             TreeViewImageInfo info;
             info.fileName = QString::fromStdWString(fileName);
-            for (size_t k = 0; k < out2.size(); ++k)
+            for (size_t k = 0; k < fileGroup.size(); ++k)
             {
-                if (!out2[k]->compare(fileName))
+                if (!fileGroup[k].compare(fileName))
                 {
                     auto & imageBaseInfo = imagesInfo[k];
                     info.height = imageBaseInfo.Height;
@@ -200,7 +189,52 @@ void QPicThread::run()
         }
     }
     MainWnd->SetGroupResult(groups, readFailedFile);
+}
 
+void QPicThread::run()
+{
+    continueRun = true;    
+    emit PictureProcessStepMsg(0, _U("正在扫描文件..."));
+
+    std::vector<std::wstring> path, out;
+    for (auto & qs : Path)
+    {
+        path.push_back(qs.toStdWString());
+    }
+    GetSubFileList(path, out);
+
+    // 筛除不处理的文件
+    std::vector<std::wstring> fileGroup = RemoveBadFiles(out);
+
+    // 存放图像基本信息，与 fileGroup 一一对应
+    std::vector<Alisa::ImageInfo> imagesInfo;
+    imagesInfo.resize(fileGroup.size());
+    Alisa::ImageFeatureVector fv;
+    fv.Initialize(Threshold);
+    std::vector<QString> readFailedFile = StartReadThread(fileGroup, imagesInfo, fv);
+
+
+    if (!continueRun)
+    {
+        emit PictureProcessStepMsg(0, _U("处理中止"));
+        exit();
+        return;
+    }
+
+
+    emit PictureProcessStepMsg(0.7f, _U("正在比较..."));
+    fv.DivideGroup();
+
+
+    if (!continueRun)
+    {
+        emit PictureProcessStepMsg(0, _U("处理中止"));
+        exit();
+        return;
+    }
+
+    emit PictureProcessStepMsg(0.95f, _U("正在生成结果..."));
+    GenerateResult(fv, fileGroup, imagesInfo, readFailedFile);
 
     emit PictureProcessStepMsg(1, _U("查找完成"));
     emit PictureProcessFinish();

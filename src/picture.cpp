@@ -207,7 +207,6 @@ bool Alisa::ImageImpl::Open(const string_t & filename)
         return ImageCodec::DecodePng(filename, this);
 
     default:
-        assert(0);
         break;
     }
 

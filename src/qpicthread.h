@@ -10,6 +10,7 @@
 namespace Alisa {
 class ImageInfo;
 class ImageFeatureVector;
+class FeatureDataRecord;
 }
 class MainWindow;
 class ReadFileSubThread;
@@ -28,10 +29,11 @@ public:
     bool Abort();
 
 private:
-    int                         GetCPUCoreNum();
-    std::vector<std::wstring>   RemoveBadFiles(const std::vector<std::wstring> & in) const;
-    std::vector<QString>        StartReadThread(std::vector<std::wstring> & fileGroup, std::vector<Alisa::ImageInfo> & imagesInfo, Alisa::ImageFeatureVector & fv);
-    void                        GenerateResult(const Alisa::ImageFeatureVector & fv, const std::vector<std::wstring> & fileGroup, const std::vector<Alisa::ImageInfo> & imagesInfo, const std::vector<QString> & readFailedFile);
+    static int                  GetCPUCoreNum();
+    static QString              GetCacheFilePath();
+    std::vector<std::wstring>   FilterFiles(const std::vector<std::wstring> & in) const;
+    std::vector<QString>        StartReadThread(std::vector<std::wstring> & fileGroup, std::vector<Alisa::ImageInfo> & imagesInfo, Alisa::ImageFeatureVector & fv, Alisa::FeatureDataRecord & fdr);
+    void                        GenerateResult(const Alisa::ImageFeatureVector & fv, const std::vector<std::wstring> & fileGroup, const std::vector<Alisa::ImageInfo> & imagesInfo, const std::vector<QString> & readFailedFile) const;
 
 signals:
     void PictureProcessFinish();

@@ -133,7 +133,7 @@ void MainWindow::OnPictureProcessFinish()
             content.clear();
             content.push_back(pictureGroup[i][f].fileName);
             content.push_back(GetSizeString(pictureGroup[i][f].fileInfo.size()));
-            content.push_back(QString::number(pictureGroup[i][f].width) + "x" + QString::number((pictureGroup[i][0].height)));
+            content.push_back(QString::number(pictureGroup[i][f].width) + "x" + QString::number((pictureGroup[i][f].height)));
             content.push_back(pictureGroup[i][f].fileInfo.lastModified().toString("yyyy/MM/dd/ hh:mm:ss"));
 
             auto entry = new QTreeWidgetItem(content);

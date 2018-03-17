@@ -1,4 +1,5 @@
 ﻿
+#include <QApplication>
 #include <array>
 #include "qpicthread.h"
 #include "mainwindow.h"
@@ -17,6 +18,7 @@ struct SubThreadData
     std::vector<Alisa::ImageInfo>::iterator     imgStart;
     std::vector<Alisa::ImageInfo>::iterator     imgEnd;
     Alisa::ImageFeatureVector *                 fv{ nullptr };
+    Alisa::FeatureDataRecord *                  cache{nullptr};
     bool *                                      continueProc{ nullptr };        // 是否中断处理
     int                                         readFileCount{ 0 };             // 已读取的数量
     std::vector<const std::wstring *>           failedFile;                     // 读取失败的文件名
@@ -32,16 +34,21 @@ public:
         auto imgIt = Data->imgStart;
         for (auto it = Data->fileStart; it != Data->fileEnd && *Data->continueProc; ++Data->readFileCount, ++it, ++imgIt)
         {
-            Alisa::Image image;
-            if (!image.Open(*it))
+            if (!Data->cache->LoadCacheHistogram(*it, *Data->fv))
             {
-                Data->failedFile.push_back(&*it);
-                continue;
+                Alisa::Image image;
+                if (!image.Open(*it))
+                {
+                    Data->failedFile.push_back(&*it);
+                    continue;
+                }
+                *imgIt = image.GetImageInfo();
+                Data->fv->AddPicture((it)->c_str(), image);
             }
-
-            *imgIt = image.GetImageInfo();
-            Data->fv->AddPicture((it)->c_str(), image);
-
+            else
+            {
+                *imgIt = Alisa::Image::GetImageInfo(*it);
+            }
         }
         Q_ASSERT(!*Data->continueProc || imgIt == Data->imgEnd);
         exit();
@@ -77,7 +84,12 @@ int QPicThread::GetCPUCoreNum()
 #endif
 }
 
-std::vector<std::wstring> QPicThread::RemoveBadFiles(const std::vector<std::wstring> &in) const
+QString QPicThread::GetCacheFilePath()
+{
+    return QCoreApplication::applicationDirPath() + "\\cache.dat";
+}
+
+std::vector<std::wstring> QPicThread::FilterFiles(const std::vector<std::wstring> &in) const
 {
     std::vector<std::wstring> fileGroup;
     for (size_t i = 0; i < in.size() && continueRun; ++i)
@@ -97,7 +109,8 @@ std::vector<std::wstring> QPicThread::RemoveBadFiles(const std::vector<std::wstr
 std::vector<QString> QPicThread::StartReadThread(
         std::vector<std::wstring> & fileGroup,
         std::vector<Alisa::ImageInfo> & imagesInfo,
-        Alisa::ImageFeatureVector & fv
+        Alisa::ImageFeatureVector & fv,
+        Alisa::FeatureDataRecord & fdr
         )
 {
     // 多线程读取
@@ -107,13 +120,14 @@ std::vector<QString> QPicThread::StartReadThread(
     for (int i = 0; i < threadCounts; ++i)
     {
         auto d = new SubThreadData;
-        d->continueProc = &continueRun;
+        d->continueProc  = &continueRun;
         d->readFileCount = 0;
-        d->fv = &fv;
-        d->fileStart = fileGroup.begin() + i * partCount;
-        d->fileEnd   = fileGroup.begin() + qMin<int>((i + 1) * partCount, fileGroup.size());
-        d->imgStart  = imagesInfo.begin() + i * partCount;
-        d->imgEnd    = imagesInfo.begin() + qMin<int>((i + 1) * partCount, fileGroup.size());
+        d->fv            = &fv;
+        d->fileStart     = fileGroup.begin() + i * partCount;
+        d->fileEnd       = fileGroup.begin() + qMin<int>((i + 1) * partCount, fileGroup.size());
+        d->imgStart      = imagesInfo.begin() + i * partCount;
+        d->imgEnd        = imagesInfo.begin() + qMin<int>((i + 1) * partCount, fileGroup.size());
+        d->cache         = &fdr;
 
         auto th = new ReadFileSubThread(d);
         threads.push_back(QPair<ReadFileSubThread*, SubThreadData*>(th, d));
@@ -160,7 +174,8 @@ void QPicThread::GenerateResult(
         const Alisa::ImageFeatureVector & fv,
         const std::vector<std::wstring> & fileGroup,
         const std::vector<Alisa::ImageInfo> & imagesInfo,
-        const std::vector<QString> & readFailedFile)
+        const std::vector<QString> & readFailedFile
+        ) const
 {
     std::vector<std::vector<TreeViewImageInfo>> groups;
     auto _result = fv.GetGroupResult();
@@ -204,15 +219,24 @@ void QPicThread::run()
     GetSubFileList(path, out);
 
     // 筛除不处理的文件
-    std::vector<std::wstring> fileGroup = RemoveBadFiles(out);
+    std::vector<std::wstring> fileGroup = FilterFiles(out);
 
     // 存放图像基本信息，与 fileGroup 一一对应
     std::vector<Alisa::ImageInfo> imagesInfo;
     imagesInfo.resize(fileGroup.size());
     Alisa::ImageFeatureVector fv;
     fv.Initialize(Threshold);
-    std::vector<QString> readFailedFile = StartReadThread(fileGroup, imagesInfo, fv);
+    Alisa::FeatureDataRecord fdr;
+    bool cacheFileExist = fdr.OpenExist(GetCacheFilePath().toStdWString());
+    std::vector<QString> readFailedFile = StartReadThread(fileGroup, imagesInfo, fv, fdr);
 
+    // 更新缓存
+    if (!cacheFileExist)
+    {
+        fdr.Create(GetCacheFilePath().toStdWString());
+    }
+    fdr.SaveAllHistogramToFile(fv);
+    fdr.Close();
 
     if (!continueRun)
     {

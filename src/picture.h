@@ -169,6 +169,7 @@ namespace Alisa
         bool RemoveAlpha();
         bool AddAlpha();
 
+        static ImageInfo GetImageInfo(const string_t & filename);
         ImageInfo GetImageInfo() const;
         const std::vector<std::vector<Pixel>> & GetPixelsGroup() const;
         void Clear();

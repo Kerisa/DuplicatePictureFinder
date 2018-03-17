@@ -34,6 +34,36 @@ void JpgErrorExitRoutine(j_common_ptr cinfo)
 
 namespace Alisa
 {
+    class FilePointerHolder
+    {
+    public:
+        FilePointerHolder() = default;
+        FilePointerHolder(FILE * fp) : mFilePointer(fp) { }
+        FilePointerHolder(FilePointerHolder && other)
+        {
+            mFilePointer = other.mFilePointer;
+            other.mFilePointer = nullptr;
+        }
+        errno_t Open(const string_t & filename, const TCHAR * mode)
+        {
+            return _tfopen_s(&mFilePointer, filename.c_str(), mode);
+        }
+        operator FILE *() const { return mFilePointer; }
+        ~FilePointerHolder()
+        {
+            if (mFilePointer)
+            {
+                fclose(mFilePointer);
+            }
+        }
+
+    private:
+        FILE * mFilePointer{ nullptr };
+
+        FilePointerHolder(const FilePointerHolder &) = delete;
+        FilePointerHolder & operator=(const FilePointerHolder &) = delete;
+    };
+
     class ImageImpl
     {
     public:
@@ -43,6 +73,7 @@ namespace Alisa
         bool NewImage(ImageInfo info);
         bool SaveTo(const string_t & filename, E_ImageType type);
         void Clear();
+        static ImageInfo GetImageInfo(const string_t & filename);
         ImageInfo GetImageInfo() const;
         const std::vector<std::vector<Pixel>> & GetPixelsGroup() const;
         bool Blend(const ImageImpl *obj, int offsetX, int offsetY, E_ImageBlendMode mode);
@@ -74,13 +105,13 @@ namespace Alisa
     class ImageCodec
     {
     public:
-        static bool DecodeBmp(const string_t & filename,       ImageImpl *img);
+        static bool DecodeBmp(const string_t & filename,       ImageImpl *img, bool infoOnly);
         static bool EncodeBmp(const string_t & filename, const ImageImpl *img);
 
-        static bool DecodePng(const string_t & filename,       ImageImpl *img);
+        static bool DecodePng(const string_t & filename,       ImageImpl *img, bool infoOnly);
         static bool EncodePng(const string_t & filename, const ImageImpl *img);
 
-        static bool DecodeJpg(const string_t & filename,       ImageImpl *img);
+        static bool DecodeJpg(const string_t & filename,       ImageImpl *img, bool infoOnly);
         static bool EncodeJpg(const string_t & filename, const ImageImpl *img);
     };
 }
@@ -134,6 +165,11 @@ bool Alisa::Image::RemoveAlpha()
 bool Alisa::Image::AddAlpha()
 {
     return Impl->AddAlpha();
+}
+
+Alisa::ImageInfo Alisa::Image::GetImageInfo(const string_t & filename)
+{
+    return ImageImpl::GetImageInfo(filename);
 }
 
 Alisa::ImageInfo Alisa::Image::GetImageInfo() const
@@ -198,13 +234,13 @@ bool Alisa::ImageImpl::Open(const string_t & filename)
     switch (type)
     {
     case E_ImageType_Bmp:
-        return ImageCodec::DecodeBmp(filename, this);
+        return ImageCodec::DecodeBmp(filename, this, false);
 
     case E_ImageType_Jpg:
-        return ImageCodec::DecodeJpg(filename, this);
+        return ImageCodec::DecodeJpg(filename, this, false);
 
     case E_ImageType_Png:
-        return ImageCodec::DecodePng(filename, this);
+        return ImageCodec::DecodePng(filename, this, false);
 
     default:
         break;
@@ -249,6 +285,31 @@ void Alisa::ImageImpl::Clear()
     Pixels.clear();
 }
 
+Alisa::ImageInfo Alisa::ImageImpl::GetImageInfo(const string_t & filename)
+{
+    ImageImpl impl;
+    auto type = impl.GetImageType(filename);
+    bool success = false;
+    switch (type)
+    {
+    case E_ImageType_Bmp:
+        success = ImageCodec::DecodeBmp(filename, &impl, true);
+        break;
+
+    case E_ImageType_Jpg:
+        success = ImageCodec::DecodeJpg(filename, &impl, true);
+        break;
+
+    case E_ImageType_Png:
+        success = ImageCodec::DecodePng(filename, &impl, true);
+        break;
+
+    default:
+        break;
+    }
+    return impl.GetImageInfo();
+}
+
 Alisa::ImageInfo Alisa::ImageImpl::GetImageInfo() const
 {
     return BaseInfo;
@@ -287,9 +348,9 @@ bool Alisa::ImageImpl::Blend(const ImageImpl * obj, int offsetX, int offsetY, E_
         return false;
     }
 
-    for (size_t h = 0; h < obj->BaseInfo.Height; ++h)
+    for (int h = 0; h < obj->BaseInfo.Height; ++h)
     {
-        for (size_t w = 0; w < obj->BaseInfo.Width; ++w)
+        for (int w = 0; w < obj->BaseInfo.Width; ++w)
         {
             const auto & srcPixel = obj->Pixels[h][w];
             if (srcPixel.A > 0)
@@ -562,13 +623,8 @@ Alisa::E_ImageType Alisa::ImageImpl::GetImageType(const string_t & filename)
     const unsigned char bmp_magic[] = { 0x42, 0x4d };
 
 
-    FILE *infile = nullptr;
-#ifdef _UNICODE
-    errno_t err = _wfopen_s(&infile, filename.c_str(), L"rb");
-#else
-    errno_t err = fopen_s(&infile, filename.c_str(), "rb");
-#endif
-    if (err)
+    FilePointerHolder infile;
+    if (infile.Open(filename, __T("rb")))
     {
         assert(0);
         return E_ImageType_Unknown;
@@ -576,7 +632,6 @@ Alisa::E_ImageType Alisa::ImageImpl::GetImageType(const string_t & filename)
 
     unsigned char buf[4];
     fread_s(buf, sizeof(buf), sizeof(buf), 1, infile);
-    fclose(infile);
 
     E_ImageType type = E_ImageType_Unknown;
 
@@ -607,27 +662,19 @@ Alisa::E_ImageType Alisa::ImageImpl::GetImageType(const string_t & filename)
 
 
 
-bool Alisa::ImageCodec::DecodeBmp(const string_t & filename, ImageImpl * img)
+bool Alisa::ImageCodec::DecodeBmp(const string_t & filename, ImageImpl * img, bool infoOnly)
 {
     assert(!filename.empty());
     assert(img);
     if (filename.empty() || !img)
         return false;
 
-    img->BaseInfo.Width = img->BaseInfo.Height = img->BaseInfo.Component = 0;
-    img->BaseInfo.FrameCount = 1;
+    img->Clear();
 
-    FILE *infile = nullptr;
-#ifdef _UNICODE
-    errno_t err = _wfopen_s(&infile, filename.c_str(), L"rb");
-#else
-    errno_t err = fopen_s(&infile, filename.c_str(), "rb");
-#endif
-    if (err)
+    FilePointerHolder infile;
+    if (infile.Open(filename, __T("rb")))
         return false;
-
-    rewind(infile);
-
+    
     _BITMAPFILEHEADER bfh;
     fread_s(&bfh, sizeof(_BITMAPFILEHEADER), sizeof(_BITMAPFILEHEADER), 1, infile);
     _BITMAPINFOHEADER bih;
@@ -644,6 +691,10 @@ bool Alisa::ImageCodec::DecodeBmp(const string_t & filename, ImageImpl * img)
     img->BaseInfo.Height = abs(bih.biHeight);
     img->BaseInfo.Width = bih.biWidth;
     img->BaseInfo.Component = bih.biBitCount >> 3;
+
+    if (infoOnly)
+        return true;
+
     int row_stride = bih.biWidth * (bih.biBitCount >> 3);
     int row_expand = (row_stride + 3) & ~3;             // bmp的行4字节对齐
 
@@ -665,8 +716,6 @@ bool Alisa::ImageCodec::DecodeBmp(const string_t & filename, ImageImpl * img)
         fread_s(&dummy, sizeof(long), 1, row_expand - row_stride, infile);
 
     }
-    fclose(infile);
-    infile = NULL;
 
     // 内存中像素点的颜色分量顺序是RGB(A)，bmp文件中的顺序是BGR(A)
     unsigned char *ptr = ppixels;
@@ -723,13 +772,8 @@ bool Alisa::ImageCodec::EncodeBmp(const string_t & filename, const ImageImpl * i
     bih.biBitCount = img->BaseInfo.Component << 3;
     bih.biSizeImage = bfh.bfSize - bfh.bfOffBits;
 
-    FILE *outfile = nullptr;
-#ifdef _UNICODE
-    errno_t err = _wfopen_s(&outfile, filename.c_str(), L"wb");
-#else
-    errno_t err = fopen_s(&outfile, filename.c_str(), "wb");
-#endif
-    if (err)
+    FilePointerHolder outfile;
+    if (outfile.Open(filename, __T("wb")))
         return false;
 
     fwrite(&bfh, sizeof(_BITMAPFILEHEADER), 1, outfile);
@@ -764,20 +808,17 @@ bool Alisa::ImageCodec::EncodeBmp(const string_t & filename, const ImageImpl * i
         {
             assert(0);
             delete[] buffer;
-            fclose(outfile);
             return false;
         }
         fwrite(buffer, 1, row_stride, outfile);
         fwrite(zero_fill, 1, aligned_width - row_stride, outfile);
     }
 
-    fclose(outfile);
-
     delete[] buffer;
     return true;
 }
 
-bool Alisa::ImageCodec::DecodePng(const string_t & filename, ImageImpl * img)
+bool Alisa::ImageCodec::DecodePng(const string_t & filename, ImageImpl * img, bool infoOnly)
 {
     unsigned char* pPixels = nullptr;
     unsigned char** lines = nullptr;
@@ -810,14 +851,11 @@ bool Alisa::ImageCodec::DecodePng(const string_t & filename, ImageImpl * img)
     }
 
     assert(png_ptr && info_ptr);
+    img->Clear();
 
-    FILE *infile = nullptr;
-#ifdef _UNICODE
-    errno_t err = _wfopen_s(&infile, filename.c_str(), L"rb");
-#else
-    errno_t err = fopen_s(&infile, filename.c_str(), "rb");
-#endif
-    if (err)
+
+    FilePointerHolder infile;
+    if (infile.Open(filename, __T("rb")))
         return false;
 
 
@@ -835,12 +873,22 @@ bool Alisa::ImageCodec::DecodePng(const string_t & filename, ImageImpl * img)
     png_get_IHDR(png_ptr, info_ptr,
         &width, &height, &bit_depth, &color_type,
         NULL, NULL, NULL);
+    int pixel_byte = color_type == PNG_COLOR_TYPE_RGB ? 3 : 4;
+    
+    img->BaseInfo.Height = height;
+    assert(img->BaseInfo.Height > 0);
+    img->BaseInfo.Width = width;
+    img->BaseInfo.Component = pixel_byte;
+
+    if (infoOnly)
+    {
+        png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+        return true;
+    }
 
     //
     // 按颜色格式读取为RGBA
     //
-
-    int pixel_byte = color_type == PNG_COLOR_TYPE_RGB ? 3 : 4;
 
     //要求转换索引颜色到RGB
     if (color_type == PNG_COLOR_TYPE_PALETTE)
@@ -876,12 +924,6 @@ bool Alisa::ImageCodec::DecodePng(const string_t & filename, ImageImpl * img)
     // 读取像素
     //
     png_read_image(png_ptr, (png_bytepp)lines);
-
-    img->Clear();
-    img->BaseInfo.Height = height;
-    assert(img->BaseInfo.Height > 0);
-    img->BaseInfo.Width = width;
-    img->BaseInfo.Component = pixel_byte;
     
 
     assert((int)&((Pixel*)0)->R == 0 && (int)&((Pixel*)0)->G == 1 && (int)&((Pixel*)0)->B == 2 && (int)&((Pixel*)0)->A == 3);
@@ -910,7 +952,6 @@ bool Alisa::ImageCodec::DecodePng(const string_t & filename, ImageImpl * img)
     //
     png_read_end(png_ptr, info_ptr);
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-    fclose(infile);
     delete[] lines;
     delete[] pPixels;
     return true;
@@ -922,6 +963,7 @@ bool Alisa::ImageCodec::EncodePng(const string_t & filename, const ImageImpl * i
     png_infop   info_ptr;    //libpng的信息
 
     unsigned char** lines = nullptr;
+    FilePointerHolder outfile;
 
     png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png_ptr)
@@ -941,13 +983,7 @@ bool Alisa::ImageCodec::EncodePng(const string_t & filename, const ImageImpl * i
 
     assert(png_ptr && info_ptr);
 
-    FILE *outfile = nullptr;
-#ifdef _UNICODE
-    errno_t err = _wfopen_s(&outfile, filename.c_str(), L"wb");
-#else
-    errno_t err = fopen_s(&outfile, filename.c_str(), "wb");
-#endif
-    if (err)
+    if (outfile.Open(filename, __T("wb")))
         return false;
 
     png_init_io(png_ptr, outfile);
@@ -1006,7 +1042,6 @@ bool Alisa::ImageCodec::EncodePng(const string_t & filename, const ImageImpl * i
     png_write_image(png_ptr, (png_bytepp)lines);
     png_write_end(png_ptr, info_ptr);
     png_destroy_write_struct(&png_ptr, &info_ptr);
-    fclose(outfile);
     for (int i = 0; i < img->BaseInfo.Height; ++i)
         delete[] lines[i];
     delete[] lines;
@@ -1024,7 +1059,7 @@ Error:
     return false;
 }
 
-bool Alisa::ImageCodec::DecodeJpg(const string_t & filename, ImageImpl * img)
+bool Alisa::ImageCodec::DecodeJpg(const string_t & filename, ImageImpl * img, bool infoOnly)
 {
     struct jpeg_decompress_struct cinfo;
     struct Jpg_error_mgr jerr;
@@ -1032,13 +1067,8 @@ bool Alisa::ImageCodec::DecodeJpg(const string_t & filename, ImageImpl * img)
 
     img->Clear();
 
-    FILE *infile = nullptr;
-#ifdef _UNICODE
-    errno_t err = _wfopen_s(&infile, filename.c_str(), L"rb");
-#else
-    errno_t err = fopen_s(&infile, filename.c_str(), "rb");
-#endif
-    if (err)
+    FilePointerHolder infile;
+    if (infile.Open(filename, __T("rb")))
         return false;
 
     cinfo.err = jpeg_std_error(&jerr.pub);
@@ -1067,39 +1097,41 @@ bool Alisa::ImageCodec::DecodeJpg(const string_t & filename, ImageImpl * img)
         img->BaseInfo.Component = cinfo.num_components;
         assert(cinfo.num_components == PixelType_RGB);
 
-        int row_stride = cinfo.image_width * cinfo.num_components;
-        auto ppixels = new unsigned char[row_stride * cinfo.image_height];
-
-        jpeg_start_decompress(&cinfo);
-
-        // jpg储存顺序等于显示顺序
-        row_arr = new JSAMPROW[cinfo.image_height];
-        for (JDIMENSION i = 0; i < cinfo.image_height; ++i)
-            row_arr[i] = (JSAMPROW)(ppixels + (i) * row_stride);
-        while (cinfo.output_scanline < cinfo.output_height)
-            (void)jpeg_read_scanlines(&cinfo, &row_arr[cinfo.output_scanline], 1);
-
-        jpeg_finish_decompress(&cinfo);
-
-        img->Pixels.resize(cinfo.image_height);
-        for (size_t r = 0; r < img->Pixels.size(); ++r)
+        if (!infoOnly)
         {
-            img->Pixels[r].resize(cinfo.image_width);
-            for (size_t w = 0; w < img->Pixels[r].size(); ++w)
-            {
-                auto & p = img->Pixels[r][w];
-                p.R = ppixels[r * row_stride + w * cinfo.num_components];
-                p.G = ppixels[r * row_stride + w * cinfo.num_components + 1];
-                p.B = ppixels[r * row_stride + w * cinfo.num_components + 2];
-                // p.A = 0xff;
-            }
-        }
+            int row_stride = cinfo.image_width * cinfo.num_components;
+            auto ppixels = new unsigned char[row_stride * cinfo.image_height];
 
-        delete[] row_arr;
-        delete[] ppixels;
+            jpeg_start_decompress(&cinfo);
+
+            // jpg储存顺序等于显示顺序
+            row_arr = new JSAMPROW[cinfo.image_height];
+            for (JDIMENSION i = 0; i < cinfo.image_height; ++i)
+                row_arr[i] = (JSAMPROW)(ppixels + (i)* row_stride);
+            while (cinfo.output_scanline < cinfo.output_height)
+                (void)jpeg_read_scanlines(&cinfo, &row_arr[cinfo.output_scanline], 1);
+
+            jpeg_finish_decompress(&cinfo);
+
+            img->Pixels.resize(cinfo.image_height);
+            for (size_t r = 0; r < img->Pixels.size(); ++r)
+            {
+                img->Pixels[r].resize(cinfo.image_width);
+                for (size_t w = 0; w < img->Pixels[r].size(); ++w)
+                {
+                    auto & p = img->Pixels[r][w];
+                    p.R = ppixels[r * row_stride + w * cinfo.num_components];
+                    p.G = ppixels[r * row_stride + w * cinfo.num_components + 1];
+                    p.B = ppixels[r * row_stride + w * cinfo.num_components + 2];
+                    // p.A = 0xff;
+                }
+            }
+
+            delete[] row_arr;
+            delete[] ppixels;
+        }
     }
     jpeg_destroy_decompress(&cinfo);
-    fclose(infile);
     return JCS_RGB == cinfo.out_color_space;
 }
 
@@ -1125,13 +1157,8 @@ bool Alisa::ImageCodec::EncodeJpg(const string_t & filename, const ImageImpl * i
     }
 
 
-    FILE *outfile = nullptr;
-#ifdef _UNICODE
-    errno_t err = _wfopen_s(&outfile, filename.c_str(), L"wb");
-#else
-    errno_t err = fopen_s(&outfile, filename.c_str(), "wb");
-#endif
-    if (err)
+    FilePointerHolder outfile;
+    if (outfile.Open(filename, __T("wb")))
         return false;
 
 
@@ -1177,7 +1204,6 @@ bool Alisa::ImageCodec::EncodeJpg(const string_t & filename, const ImageImpl * i
 
     jpeg_finish_compress(&cinfo);
     jpeg_destroy_compress(&cinfo);
-    fclose(outfile);
     if (translate)
         delete[] translate;
 

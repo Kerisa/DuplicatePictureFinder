@@ -46,7 +46,7 @@ MainWindow::MainWindow(QWidget *parent) :
     InitStatusBar();
     ui->searchResult_treeWidget->InitTreeView();
 
-    procThread = nullptr;
+    ProcThread = nullptr;
     Threshold = 0.95f;
 }
 
@@ -55,7 +55,7 @@ MainWindow::~MainWindow()
     ui->leftImg_graphicsView->setUserData(0, nullptr);
     ui->rightImg_graphicsView->setUserData(0, nullptr);
     delete ui;
-    if (procThread) delete procThread;
+    if (ProcThread) delete ProcThread;
 }
 
 void MainWindow::RefreshGraphicImage(const QString &filename, DisplayImage *img, QGraphicsView *view, QLabel *filenameLabel, bool loadFile)
@@ -119,7 +119,7 @@ QString MainWindow::GetSizeString(qint64 size)
 void MainWindow::OnPictureProcessFinish()
 {
     ui->searchResult_treeWidget->clear();
-    for (size_t i = 0; i < pictureGroup.size(); ++i)
+    for (size_t i = 0; i < PictureGroup.size(); ++i)
     {
         QStringList content;
         content.push_back("Group<" + QString::number(i + 1) + ">");
@@ -127,20 +127,20 @@ void MainWindow::OnPictureProcessFinish()
         ui->searchResult_treeWidget->addTopLevelItem(top);
         top->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         top->setCheckState(0, Qt::PartiallyChecked);
-        Q_ASSERT(pictureGroup[i].size() > 1);
-        for (size_t f = 0; f < pictureGroup[i].size(); ++f)
+        Q_ASSERT(PictureGroup[i].size() > 1);
+        for (size_t f = 0; f < PictureGroup[i].size(); ++f)
         {
             content.clear();
-            content.push_back(pictureGroup[i][f].fileName);
-            content.push_back(GetSizeString(pictureGroup[i][f].fileInfo.size()));
-            content.push_back(QString::number(pictureGroup[i][f].width) + "x" + QString::number((pictureGroup[i][f].height)));
-            content.push_back(pictureGroup[i][f].fileInfo.lastModified().toString("yyyy/MM/dd/ hh:mm:ss"));
+            content.push_back(PictureGroup[i][f].fileName);
+            content.push_back(GetSizeString(PictureGroup[i][f].fileInfo.size()));
+            content.push_back(QString::number(PictureGroup[i][f].width) + "x" + QString::number((PictureGroup[i][f].height)));
+            content.push_back(PictureGroup[i][f].fileInfo.lastModified().toString("yyyy/MM/dd/ hh:mm:ss"));
 
             auto entry = new QTreeWidgetItem(content);
             entry->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
             entry->setCheckState(0, f == 0 ? Qt::Unchecked : Qt::Checked);
             QFileIconProvider icon;
-            entry->setIcon(0, icon.icon(pictureGroup[i][f].fileInfo));
+            entry->setIcon(0, icon.icon(PictureGroup[i][f].fileInfo));
             top->addChild(entry);
         }
     }
@@ -176,11 +176,11 @@ void MainWindow::OnTableItemClicked(bool left, QTreeWidgetItem* item, int colume
     auto filename = item->text(0);
     if (left)
     {
-        RefreshGraphicImage(filename, &imageLeft, ui->leftImg_graphicsView, ui->leftImageName_Label);
+        RefreshGraphicImage(filename, &ImageLeft, ui->leftImg_graphicsView, ui->leftImageName_Label);
     }
     else
     {
-        RefreshGraphicImage(filename, &imageRight, ui->rightImg_graphicsView, ui->rightImageName_Label);
+        RefreshGraphicImage(filename, &ImageRight, ui->rightImg_graphicsView, ui->rightImageName_Label);
     }
 }
 
@@ -198,9 +198,9 @@ void MainWindow::MenuAct_About()
 
 void MainWindow::MenuAct_StopSearch()
 {
-    if (procThread->isRunning())
+    if (ProcThread->isRunning())
     {
-        if (procThread->Abort())
+        if (ProcThread->Abort())
         {
             QMessageBox::information(this, _U("处理中止"), _U("处理已被中止"), QMessageBox::Ok);
         }
@@ -293,8 +293,8 @@ void MainWindow::MenuAct_RemoveSelectRecord()
 
 void MainWindow::OnPictureProcessStep(float percent, const QString &msg)
 {
-    progressBar->setValue(percent * 100);
-    statusBarMessage->setText(msg);
+    ProgressBar->setValue(percent * 100);
+    StatusBarMessage->setText(msg);
 }
 
 void MainWindow::InitMenuBar()
@@ -380,24 +380,24 @@ void MainWindow::InitStatusBar()
     QStatusBar *status_bar = statusBar();
 
     // 进度条
-    progressBar = new QProgressBar();
-    progressBar->setRange(0,100);
-    progressBar->setValue(0);
-    status_bar->addWidget(progressBar);
+    ProgressBar = new QProgressBar();
+    ProgressBar->setRange(0,100);
+    ProgressBar->setValue(0);
+    status_bar->addWidget(ProgressBar);
 
-    statusBarMessage = new QLabel();
-    statusBarMessage->setText("");
-    status_bar->addWidget(statusBarMessage, 1);
+    StatusBarMessage = new QLabel();
+    StatusBarMessage->setText("");
+    status_bar->addWidget(StatusBarMessage, 1);
 }
 
 void MainWindow::on_startSearchBtn_clicked()
 {
-    if (!procThread)
+    if (!ProcThread)
     {
-        procThread = new QPicThread(this);
+        ProcThread = new QPicThread(this);
     }
 
-    if (procThread->isRunning())
+    if (ProcThread->isRunning())
     {
         QMessageBox::about(this, _U("任务已开始"), _U("正在处理中，请等待"));
     }
@@ -409,8 +409,8 @@ void MainWindow::on_startSearchBtn_clicked()
             text.push_back(ui->searchPathList->item(i)->text());
         }
 
-        procThread->SetPath(text, Threshold);
-        procThread->start();
+        ProcThread->SetPath(text, Threshold);
+        ProcThread->start();
     }
 }
 
@@ -524,8 +524,8 @@ void MainWindow::resizeEvent(QResizeEvent* event)
     ui->searchResult_treeWidget->AdjustColumeWidth();
 
     // 缩放图像
-    RefreshGraphicImage(ui->leftImageName_Label->text(), &imageLeft, ui->leftImg_graphicsView, ui->leftImageName_Label, false);
-    RefreshGraphicImage(ui->rightImageName_Label->text(), &imageRight, ui->rightImg_graphicsView, ui->rightImageName_Label, false);
+    RefreshGraphicImage(ui->leftImageName_Label->text(), &ImageLeft, ui->leftImg_graphicsView, ui->leftImageName_Label, false);
+    RefreshGraphicImage(ui->rightImageName_Label->text(), &ImageRight, ui->rightImg_graphicsView, ui->rightImageName_Label, false);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

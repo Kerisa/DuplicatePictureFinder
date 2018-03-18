@@ -1,4 +1,4 @@
-#ifndef CUSTOMTREEWIDGET_H
+﻿#ifndef CUSTOMTREEWIDGET_H
 #define CUSTOMTREEWIDGET_H
 
 #include <qtwidgets/qtreewidget.h>
@@ -24,13 +24,14 @@ class CustomTreeWidget : public QTreeWidget
 
 public:
     explicit CustomTreeWidget(QWidget *parent = Q_NULLPTR);
-    void InitTreeView();
-    void AdjustColumeWidth();
-    void updateParentItem(QTreeWidgetItem* item);
-    QList<TreeWidgetFileInfo> GetCheckedFileName();
 
-    void CheckAllItem();
-    void UncheckAllItem();
+    void                        InitTreeView();
+    void                        AdjustColumeWidth();
+    void                        UpdateParentItem(QTreeWidgetItem* item);
+    QList<TreeWidgetFileInfo>   GetCheckedFileName();
+
+    void                        CheckAllItem();
+    void                        UncheckAllItem();
 
 protected:
     void mouseReleaseEvent(QMouseEvent *event) Q_DECL_OVERRIDE;

@@ -60,7 +60,7 @@ void CustomTreeWidget::treeItemChanged(QTreeWidgetItem* item, int column)
         }
         else
         {
-            updateParentItem(item);
+            UpdateParentItem(item);
         }
     }
     else if (Qt::Unchecked == item->checkState(0))
@@ -75,12 +75,12 @@ void CustomTreeWidget::treeItemChanged(QTreeWidgetItem* item, int column)
         }
         else
         {
-            updateParentItem(item);
+            UpdateParentItem(item);
         }
     }
 }
 
-void CustomTreeWidget::updateParentItem(QTreeWidgetItem* item)
+void CustomTreeWidget::UpdateParentItem(QTreeWidgetItem* item)
 {
     QTreeWidgetItem *parent = item->parent();
     if (parent == NULL)

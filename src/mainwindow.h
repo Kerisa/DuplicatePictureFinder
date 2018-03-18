@@ -44,7 +44,7 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    void SetGroupResult(const std::vector<std::vector<TreeViewImageInfo>> & group, const std::vector<QString> &readFailedFile) { pictureGroup = group; ReadFailedFile = readFailedFile;}
+    void SetGroupResult(const std::vector<std::vector<TreeViewImageInfo>> & group, const std::vector<QString> &readFailedFile) { PictureGroup = group; ReadFailedFile = readFailedFile;}
     void RefreshGraphicImage(const QString &filename, DisplayImage *img, QGraphicsView *view, QLabel *filenameLabel, bool loadFile = true);
 
 protected:
@@ -59,6 +59,7 @@ private:
 public slots:
     void OnPictureProcessFinish();
     void OnTableItemClicked(bool left, QTreeWidgetItem* item, int colume);
+    void OnPictureProcessStep(float percent, const QString & msg);
     void MenuAct_Exit();
     void MenuAct_About();
     void MenuAct_StopSearch();
@@ -68,7 +69,6 @@ public slots:
     void MenuAct_UncheckAll();
     void MenuAct_ResetCheck();
     void MenuAct_RemoveSelectRecord();
-    void OnPictureProcessStep(float percent, const QString & msg);
 
 private slots:
     void on_addPath_Btn_clicked();
@@ -76,16 +76,16 @@ private slots:
     void on_startSearchBtn_clicked();
 
 private:
-    Ui::MainWindow *ui;
-    QProgressBar *progressBar;
-    QLabel *statusBarMessage;
+    Ui::MainWindow *                            ui;
+    QProgressBar *                              ProgressBar;
+    QLabel *                                    StatusBarMessage;
+    DisplayImage                                ImageLeft;
+    DisplayImage                                ImageRight;
+    QPicThread *                                ProcThread;
 
-    DisplayImage imageLeft, imageRight;
-    QPicThread *procThread;
-
-    float Threshold;
-    std::vector<std::vector<TreeViewImageInfo>> pictureGroup;
-    std::vector<QString> ReadFailedFile;
+    float                                       Threshold;
+    std::vector<std::vector<TreeViewImageInfo>> PictureGroup;
+    std::vector<QString>                        ReadFailedFile;
 };
 
 #endif // MAINWINDOW_H

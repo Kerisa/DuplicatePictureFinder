@@ -25,8 +25,8 @@ public:
 
     virtual void run();
 
-    void SetPath(const QStringList & path, float threshold);
-    bool Abort();
+    void                        SetPath(const QStringList & path, float threshold);
+    bool                        Abort();
 
 private:
     static int                  GetCPUCoreNum();
@@ -41,9 +41,9 @@ signals:
 
 private:
     QStringList Path;
-    float Threshold;
+    float       Threshold;
     MainWindow *MainWnd;
-    bool continueRun;
+    bool        ContinueRunning;
 };
 
 

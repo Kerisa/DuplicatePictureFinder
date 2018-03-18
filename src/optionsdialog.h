@@ -25,10 +25,9 @@ private slots:
     void on_threshold_hSlider_valueChanged(int value);
 
 private:
-    MainWindow *mainWindow;
-    Ui::OptionsDialog *ui;
-
-    float PicThreshold;
+    MainWindow *        mainWindow;
+    Ui::OptionsDialog * ui;
+    float               PicThreshold;
 };
 
 #endif // OPTIONSDIALOG_H

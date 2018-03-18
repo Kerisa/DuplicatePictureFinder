@@ -61,7 +61,7 @@ private:
 
 QPicThread::QPicThread(MainWindow *mainWnd)
 {
-    continueRun = true;
+    ContinueRunning = true;
     Threshold = 0.95f;
     MainWnd = mainWnd;
 
@@ -92,7 +92,7 @@ QString QPicThread::GetCacheFilePath()
 std::vector<std::wstring> QPicThread::FilterFiles(const std::vector<std::wstring> &in) const
 {
     std::vector<std::wstring> fileGroup;
-    for (size_t i = 0; i < in.size() && continueRun; ++i)
+    for (size_t i = 0; i < in.size() && ContinueRunning; ++i)
     {
         QString extension = QString::fromStdWString(in[i].substr(in[i].find_last_of('.') + 1));
         if (extension.compare("png", Qt::CaseInsensitive) &&
@@ -120,7 +120,7 @@ std::vector<QString> QPicThread::StartReadThread(
     for (int i = 0; i < threadCounts; ++i)
     {
         auto d = new SubThreadData;
-        d->continueProc  = &continueRun;
+        d->continueProc  = &ContinueRunning;
         d->readFileCount = 0;
         d->fv            = &fv;
         d->fileStart     = fileGroup.begin() + i * partCount;
@@ -144,7 +144,7 @@ std::vector<QString> QPicThread::StartReadThread(
         }
         emit PictureProcessStepMsg(0.7f * count / fileGroup.size(), _U("正在扫描文件..."));
         msleep(1000);
-        if (!continueRun || count >= fileGroup.size())
+        if (!ContinueRunning || count >= fileGroup.size())
         {
             // 结束等待
             for (auto &th : threads)
@@ -208,7 +208,7 @@ void QPicThread::GenerateResult(
 
 void QPicThread::run()
 {
-    continueRun = true;    
+    ContinueRunning = true;
     emit PictureProcessStepMsg(0, _U("正在扫描文件..."));
 
     std::vector<std::wstring> path, out;
@@ -238,7 +238,7 @@ void QPicThread::run()
     fdr.SaveAllHistogramToFile(fv);
     fdr.Close();
 
-    if (!continueRun)
+    if (!ContinueRunning)
     {
         emit PictureProcessStepMsg(0, _U("处理中止"));
         exit();
@@ -250,7 +250,7 @@ void QPicThread::run()
     fv.DivideGroup();
 
 
-    if (!continueRun)
+    if (!ContinueRunning)
     {
         emit PictureProcessStepMsg(0, _U("处理中止"));
         exit();
@@ -277,6 +277,6 @@ bool QPicThread::Abort()
     if (!isRunning())
         return true;
 
-    continueRun = false;
+    ContinueRunning = false;
     return wait(5000);
 }

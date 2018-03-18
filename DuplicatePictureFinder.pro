@@ -80,3 +80,6 @@ else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/lib/
 
 RESOURCES += \
     $$PWD/src/resource.qrc
+
+RC_FILE += \
+    $$PWD/src/resource.rc
